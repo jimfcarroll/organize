@@ -10,8 +10,8 @@ public class Organize2
 {
    static public void main(String[] args) throws Exception
    {
-      String srcDirectoryStr = "G:\\";
-      String dstDirectoryStr = "F:\\";
+      String srcDirectoryStr = "F:\\Spoken Word";
+      String dstDirectoryStr = "Z:\\Audio\\Spoken Word";
       File srcDirectory = new File(srcDirectoryStr);
       File dstDirectory = new File(dstDirectoryStr);
       

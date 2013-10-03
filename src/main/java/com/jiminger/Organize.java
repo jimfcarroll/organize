@@ -1,9 +1,20 @@
 package com.jiminger;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.List;
 //import java.nio.MappedByteBuffer;
 //import java.nio.channels.FileChannel;
-import java.util.*;
 
 public class Organize
 {
@@ -13,15 +24,17 @@ public class Organize
 //      String dstDirectoryStr = "/media/FreeAgent Secondary Drive/";
 //      String srcDirectoryStr = "/media/FreeAgent Secondary Drive/";
 //      String dstDirectoryStr = "/media/FreeAgent Primary Drive/";
-      String dstDirectoryStr = "/home/jim/Desktop/OldMusic";
-      String srcDirectoryStr = "/home/jim/Desktop/Ginger's Music";
+//      String dstDirectoryStr = "/home/jim/Desktop/OldMusic";
+//      String srcDirectoryStr = "/home/jim/Desktop/Ginger's Music";
+      String srcDirectoryStr = "F:\\Pictures";
+      String dstDirectoryStr = "C:\\Users\\Jim\\Pictures";
       
       File srcDirectory = new File(srcDirectoryStr);
       File dstDirectory = new File(dstDirectoryStr);
       
       if (!srcDirectory.exists())
       {
-         System.out.println("The directory \"" + srcDirectoryStr + "\" doesn't exist.");
+         System.err.println("The directory \"" + srcDirectoryStr + "\" doesn't exist.");
          System.exit(1);
       }
       
@@ -29,7 +42,7 @@ public class Organize
       {
          if (!dstDirectory.mkdirs())
          {
-            System.out.println("ERROR:Failed to create the destination directory:" + dstDirectoryStr);
+            System.err.println("ERROR:Failed to create the destination directory:" + dstDirectoryStr);
             System.exit(1);
          }
       }
@@ -122,7 +135,7 @@ public class Organize
          if (fromsize != tosize)
 //            throw new IOException("The file at \"" + from.getCanonicalPath() + "\" cannot be copied to \"" +
 //                  to.getCanonicalPath() + "\" because the file already there is a different size. Please remedy this and run again.");
-            System.out.println("ERROR: The file at \"" + from.getCanonicalPath() + "\" cannot be copied to \"" +
+            System.err.println("ERROR: The file at \"" + from.getCanonicalPath() + "\" cannot be copied to \"" +
                to.getCanonicalPath() + "\" because the file already there is a different size. Please remedy this and run again. skipping for now.");
 //         else
 //            System.out.println("File \"" + from.getCanonicalPath() + "\" already exists at the destination.");
@@ -133,48 +146,84 @@ public class Organize
    
    static public void copyTo(File from, File to) throws IOException
    {
-//        long size = from.length();
-//        if (size >= Integer.MAX_VALUE)
-           simpleCopyFile(from,to);
-//        else
-//           quickCopyFile(from,to);
+	   try { simpleCopyFile(from,to); return; }
+	   catch (IOException ioe) { System.err.println("Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+	   System.out.println ("Trying again....");
+	   try { simpleCopyFile(from,to); return; }
+	   catch (IOException ioe) { System.err.println("Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+	   System.out.println ("Trying again using memory mapping ....");
+	   try { memMapCopyFile(from,to); return; }
+	   catch (IOException ioe) { System.err.println("Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+	   System.out.println ("Trying again using persistent byte copy ....");
+	   try { persistentBytewiseCopyTo(from,to); return; }
+	   catch (IOException ioe) { System.err.println("Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
    }
 
-//   static public void copyTo(File from, File to) throws IOException
-//   {
-//      System.out.println("Copying \"" + from.getCanonicalPath() + "\" to \"" + to.getCanonicalPath() + "\"");
-//      FileChannel ic = null;
-//      FileChannel oc = null;
-//      try
-//      {
-//         ic = new FileInputStream(from).getChannel();
-//         oc = new FileOutputStream(to).getChannel();
-//         ic.transferTo(0, ic.size(), oc);
-//      }
-//      finally
-//      {
-//         if (ic != null) try { ic.close(); } catch (Throwable th){}
-//         if (oc != null) try { oc.close(); } catch (Throwable th){}
-//      }
-//   }
+   static final public int BUFSIZE = 10*1024*1024;
+   static final public long MAX_FAILED_COUNT = 100;
    
-//   public static void quickCopyFile(File source, File dest) throws IOException {
-//      System.out.println("Copying \"" + source.getCanonicalPath() + "\" to \"" + dest.getCanonicalPath() + "\"");
-//        FileChannel in = null, out = null;
-//        try {          
-//             in = new FileInputStream(source).getChannel();
-//             out = new FileOutputStream(dest).getChannel();
-//    
-//             long size = in.size();
-//             MappedByteBuffer buf = in.map(FileChannel.MapMode.READ_ONLY, 0, size);
-//    
-//             out.write(buf);
-//    
-//        } finally {
-//             if (in != null)          in.close();
-//             if (out != null)     out.close();
-//        }
-//   }
+   static public void persistentBytewiseCopyTo(File from, File to) throws IOException
+   {
+      System.out.println("Copying \"" + from.getCanonicalPath() + "\" to \"" + to.getCanonicalPath() + "\"");
+      RandomAccessFile fir = new RandomAccessFile(from, "r");
+      BufferedOutputStream fos = null;
+      try
+      {
+         fos = new BufferedOutputStream(new FileOutputStream(to));
+         byte[] buf = new byte[BUFSIZE];
+         int i = 0;
+         long pos = 0;
+         long failedCount = 0;
+         boolean done = false;
+         while(!done)
+         {
+        	 try {
+        		 buf[i++] = fir.readByte();
+        		 pos++;
+        		 failedCount = 0;
+        	 }
+        	 catch (EOFException eof) { done = true; } // we're done 
+        	 catch (IOException ioe)
+        	 {
+        		 System.err.println("Problem reading byte " + pos + " from file.");
+        		 fir.seek(pos);
+        		 failedCount++;
+        		 if (failedCount > MAX_FAILED_COUNT)
+        			 throw ioe;
+        		 continue;
+        	 }
+
+        	 if (i == BUFSIZE || done)
+        	 {
+        		 fos.write(buf, 0, i);
+        		 i = 0;
+        	 }
+         }
+      }
+      finally
+      {
+         if (fir != null) try { fir.close(); } catch (Throwable th) {}
+         if (fos != null) try { fos.close(); } catch (Throwable th) {}
+      }
+   }
+   
+   public static void memMapCopyFile(File source, File dest) throws IOException {
+      System.out.println("Copying \"" + source.getCanonicalPath() + "\" to \"" + dest.getCanonicalPath() + "\" using memory mapping");
+        FileChannel in = null, out = null;
+        try {          
+             in = new FileInputStream(source).getChannel();
+             out = new FileOutputStream(dest).getChannel();
+    
+             long size = in.size();
+             MappedByteBuffer buf = in.map(FileChannel.MapMode.READ_ONLY, 0, size);
+    
+             out.write(buf);
+    
+        } finally {
+             if (in != null)in.close();
+             if (out != null)out.close();
+        }
+   }
    
     static public void simpleCopyFile(File in, File out) throws IOException 
     {
