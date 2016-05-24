@@ -141,6 +141,7 @@ public class Md5Sifter {
 				keeper(chooseBetweenPreferred(preferred, filesWithSameMd5, preferedDirectories), filesWithSameMd5, actions);
 			}
 			else if (preferred.length == 0){
+				@SuppressWarnings("unchecked")
 				final List<String>[] choices = new List[filesWithSameMd5.size()];
 				for (int i = 0; i < choices.length; i++) {
 					choices[i] = new ArrayList<>();
@@ -184,7 +185,6 @@ public class Md5Sifter {
 		System.out.println("num duplicate groups: " + md52files.values().stream().filter(l -> l.size() > 1).count());
 		Set<String> preferedDirectories = new HashSet<>();
 		
-		@SuppressWarnings("resource")
 		Scanner scanner = new Scanner(System.in);
 		
 		File actionsFile = new File(actionsFileName);

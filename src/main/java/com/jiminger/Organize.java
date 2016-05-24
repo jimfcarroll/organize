@@ -1,5 +1,8 @@
 package com.jiminger;
 
+import static net.dempsy.util.Functional.recheck;
+import static net.dempsy.util.Functional.uncheck;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -25,32 +28,23 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import com.twmacinta.util.MD5;
-import com.twmacinta.util.MD5InputStream;
 
-import net.dempsy.util.Functional;
-import static net.dempsy.util.Functional.*;
-
-public class Organize
-{
-   static String[] filesToSkipAr = { "Thumbs.db", "Thumbs.db:encryptable", "RECYCLER","ZbThumbnail.info","$RECYCLE.BIN",
-      "System Volume Information", "desktop.ini", ".AppleDouble", ".DS_Store",
-      "iTunes", "Album Artwork", "Amazon MP3", "Podcasts" };
+public class Organize {
+   private static boolean dryrun = false;
    
-   static CopyFilter filter = new CopyFilter() {
-      @Override
-      public boolean copySourceFile(final File sourceFile) {
-         final String name = sourceFile.getName();
-         if (name.startsWith("_"))
-            return false;
-         return (!(name.startsWith("AlbumArt") && (name.endsWith(".jpg") || name.endsWith(".JPG"))));
-      }
-   };
+   static String[] filesToSkipAr = { "thumbs.db", "thumbs.db:encryptable", "recycler","zbthumbnail.info", "zbthumbnail (2).info", "$recycle.bin",
+      "system volume information", "desktop.ini", "desktop (2).ini", ".appledouble", ".ds_store", "digikam4.db", "thumbnails-digikam.db",
+      "sample pictures.lnk", "itunes", "album artwork", "amazon mp3", "podcasts", "picasa.ini" };
+   
    static Set<String> filesToSkip = new HashSet<>();
    static {
       filesToSkip.addAll(Arrays.asList(filesToSkipAr));
    }
+
+   static Predicate<File> filter = sourceFile -> !(filesToSkip.contains(sourceFile.getName().toLowerCase()) || sourceFile.getName().startsWith("."));
    
    private static Map<String,List<String>> readMd5File(String... fileNames) throws IOException {
 	   Map<String,List<String>> md5map = new HashMap<>();
@@ -83,19 +77,33 @@ public class Organize
 	   });
 	   return ret;
    }
+   
+   static PrintWriter out = new PrintWriter(System.out);
 
    static public void main(String[] args) throws Exception {
       // make a backup of the organizied music:
-      String srcDirectoryStr = "C:\\Users\\Jim\\Pictures\\Pictures.fromBigBU4TBDamaged";
+      String srcDirectoryStr = "C:\\Users\\Jim\\Pictures\\Pictures.fromFreeAgentPrimary";
       String dstDirectoryStr = "C:\\Users\\Jim\\Pictures\\Pictures";
       
-      String[] md5Files = new String[] { "C:\\Users\\Jim\\Documents\\md5.pics.txt" };
+      String md5File =  "C:\\Users\\Jim\\Documents\\md5.pics.txt";
       String failedFile = "C:\\Users\\Jim\\Documents\\didntCopy.txt";
+      String dups = "DUPS";
+      String outFile = "C:\\Users\\Jim\\Documents\\out.fromFreeAgentPrimary.txt";
       
-      File srcDirectory = new File(srcDirectoryStr);
+      if (outFile != null)
+    	  out = new PrintWriter(new BufferedOutputStream(new FileOutputStream(outFile)), true);
+      
+      out.println("Copying files from " + srcDirectoryStr + " into " + dstDirectoryStr);
+      
       File dstDirectory = new File(dstDirectoryStr);
+      if(dstDirectory.exists() && dstDirectory.isDirectory()) {
+    	  out.println("Making MD5 file for " + dstDirectoryStr + " ...");
+    	  Md5File.makeMd5File(md5File, null, new String[] { dstDirectoryStr } , failedFile);
+    	  out.println("Done!");
+      }      
+      File srcDirectory = new File(srcDirectoryStr);
       
-      Map<String, List<String>> md52files = readMd5File(md5Files);
+      Map<String, List<String>> md52files = readMd5File(md5File);
       Map<String, String> files2Md5 = invert(md52files);
       
       if (!srcDirectory.exists()) {
@@ -111,18 +119,13 @@ public class Organize
       }
       
       try (PrintWriter md5os = (md5File != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File,true))) : null;
-            PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile,true))) : new PrintWriter(System.err)) {
-         copyFromTo(srcDirectory,dstDirectory,filter,md5os,failed);
+            PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile,true))) : new PrintWriter(System.err);) {
+         copyFromTo(srcDirectory,dstDirectory,filter,md52files, files2Md5,md5os,failed,dups);
       }
-      System.out.println("Finished Clean");
+      out.println("Finished Clean");
    }
    
-   public static interface CopyFilter {
-      public boolean copySourceFile(File sourceFile);
-   }
-   
-   public static void copyFromTo(File srcDirectory, File dstDirectory, CopyFilter copyFilter, PrintWriter md5os, PrintWriter failed, String copyDupFolder) throws IOException
-   {
+   public static void copyFromTo(File srcDirectory, File dstDirectory, Predicate<File> copyFilter, Map<String, List<String>> md52files, Map<String, String> files2Md5, PrintWriter md5os, PrintWriter failed, String dups) throws IOException {
       if (!dstDirectory.exists()) {
          if (!dstDirectory.mkdirs())
             throw new FileNotFoundException("Could not create \"" + getName(dstDirectory) + "\"");
@@ -144,91 +147,96 @@ public class Organize
             failed.println("# The following is an entire directory failure:");
             failed.println( getName(srcDirectory) + " !=> " + getName(dstDirectory));
          }
-         System.out.println("Failed to copy directory " + getName(srcDirectory));
+         out.println("Failed to copy directory " + getName(srcDirectory));
          files = new File[0];
       }
       
-      for (File file : files)
-      {
-         //System.out.println("" + file.getName() + " at " + getName(file());
+      for (File file : files) {
          if (file.isDirectory())
             subDirs.add(file);
          else
-            conditionalCopyTo(file,new File(dstDirectory,file.getName()),copyFilter, md5os, failed, copyDupFolder,0);
+            conditionalCopyTo(file,new File(dstDirectory,file.getName()),copyFilter, md52files, files2Md5, md5os, failed, dups, 0);
       }
       
       md5os.flush();
 
       if (subDirs.size() > 0) {
          for (File subdir : subDirs) {
-            if (!filesToSkip.contains(subdir.getName()) && (copyFilter == null || copyFilter.copySourceFile(subdir))) {
+            if (copyFilter == null || copyFilter.test(subdir)) {
                File newDestDirectory = new File(dstDirectory,subdir.getName());
-               copyFromTo(subdir,newDestDirectory, copyFilter, md5os, failed, copyDupFolder);
+               copyFromTo(subdir,newDestDirectory, copyFilter, md52files, files2Md5, md5os, failed, dups);
             }
             else
-               System.out.println("Skipping " + getName(subdir));
+               out.println("Skipping " + getName(subdir));
          }
       }
    }
       
-   static public void conditionalCopyTo(File from, File to, CopyFilter copyFilter, PrintWriter md5, PrintWriter failed, String copyDupFolder, int dupCount) throws IOException
+   static public void conditionalCopyTo(File from, File to, Predicate<File> copyFilter, 
+		   Map<String, List<String>> md52files, Map<String, String> files2Md5,
+		   PrintWriter md5, PrintWriter failed, String copyDupFolder, int dupCount) throws IOException
    {
-      if (filesToSkip.contains(to.getName()) || (copyFilter != null && !copyFilter.copySourceFile(from))) {
-         System.out.println("Skipping " + getName(from));
+      if (copyFilter != null && !copyFilter.test(from)) {
+         out.println("Skipping " + getName(from));
          return;
       }
-
+      
+      // see if the source file md5 exists
+      String md5From = files2Md5.get(from.getAbsolutePath());
+      if (md5From == null) {
+    	  md5From = new Md5Hash(MD5.getHash(from)).toString();
+      }
+      
+      // now see if it already exists at the destination somewhere
+      List<String> dstWithSameMd5 = md52files.get(md5From);
+      if (dstWithSameMd5 != null) {
+    	  // out.println("File \"" + from + "\" already exists in destination at " + dstWithSameMd5);
+    	  return;
+      }
+      
       // check to see if the file already exists and if it's the same size
       if (to.exists() && to.isFile()) {
-         long fromsize = from.length();
-         long tosize = to.length();
-         
-         if (fromsize != tosize) {
-            if (copyDupFolder != null) {
-               File parent = to.getParentFile();
-               if (parent.getName().equals(copyDupFolder + (dupCount - 1)))
-                  parent = parent.getParentFile();
-               
-               File newDestDirectory = new File(parent,copyDupFolder + dupCount);
-               if (!newDestDirectory.exists())
-                  newDestDirectory.mkdirs();
-//               System.out.println("Copying Dup ... ");
-               conditionalCopyTo(from,new File(newDestDirectory,from.getName()),copyFilter,md5,failed,copyDupFolder, ++dupCount);
-            }
-            else {
-//            throw new IOException("The file at \"" + getName(from) + "\" cannot be copied to \"" +
-//                  getName(to) + "\" because the file already there is a different size. Please remedy this and run again.");
-               failed.println( getName(from) + " !=> " + getName(to));
-            }
-         }
-         else {
-            System.out.println("File \"" + getName(from) + "\" already exists at the destination.");
-            transferAttributes(from, to);
-         }
+    	  if (copyDupFolder != null) {
+    		  File parent = to.getParentFile();
+    		  if (parent.getName().equals(copyDupFolder + (dupCount - 1)))
+    			  parent = parent.getParentFile();
+
+    		  File newDestDirectory = new File(parent,copyDupFolder + dupCount);
+    		  if (!newDestDirectory.exists()) {
+    			  out.println("MKDIR " + newDestDirectory); 
+    			  if (!dryrun) newDestDirectory.mkdirs();
+    		  }
+    		  conditionalCopyTo(from,new File(newDestDirectory,from.getName()),copyFilter,md52files, files2Md5, md5,failed,copyDupFolder, ++dupCount);
+    	  } else {
+    		  out.println("File \"" + getName(from) + "\" already exists at the destination.");
+    	  }
       }
       else {
-         if (copyTo(from,to,md5))
-            transferAttributes(from, to);
+    	  out.println("COPY " + from + " => " + to);
+    	  if (!dryrun) {
+    		  if (copyTo(from,to,md5,md5From))
+    			  transferAttributes(from, to);
+    	  }
       }
    }
    
-   static public boolean copyTo(File from, File to, PrintWriter md5) throws IOException {
-	   try { simpleCopyFile(from,to,md5); return true; }
-	   catch (IOException ioe) { System.err.println("Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
-	   System.out.println ("Trying again....");
-	   try { simpleCopyFile(from,to,md5); return true; }
-	   catch (IOException ioe) { System.err.println("Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
-	   System.out.println ("Trying again using memory mapping ....");
-	   try { memMapCopyFile(from,to,md5); return true; }
-	   catch (IOException ioe) { System.err.println("Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
-	   System.out.println ("Trying again using persistent byte copy ....");
-	   try { persistentBytewiseCopyTo(from,to,md5); return true; }
-	   catch (IOException ioe) { System.err.println("Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+   static public boolean copyTo(File from, File to, PrintWriter md5, String srcMd5) throws IOException {
+	   try { simpleCopyFile(from,to,md5,srcMd5); return true; }
+	   catch (IOException ioe) { out.println("ERROR:Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+	   out.println ("ERROR:Trying again....");
+	   try { simpleCopyFile(from,to,md5,srcMd5); return true; }
+	   catch (IOException ioe) { out.println("ERROR:Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+	   out.println ("ERROR:Trying again using memory mapping ....");
+	   try { memMapCopyFile(from,to,md5,srcMd5); return true; }
+	   catch (IOException ioe) { out.println("ERROR:Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+	   out.println ("ERROR:Trying again using persistent byte copy ....");
+	   try { persistentBytewiseCopyTo(from,to,md5,srcMd5); return true; }
+	   catch (IOException ioe) { out.println("ERROR:Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
 	   
 	   // if we got here then this failed... .so we should remove the to file.
 	   if (to.exists())
 	      try { Files.delete(to.toPath()); } catch (IOException ioe) {
-	         System.err.println("Failed to delete " + to.getAbsolutePath() + " " + ioe.getLocalizedMessage());
+	         out.println("ERROR:Failed to delete " + to.getAbsolutePath() + " " + ioe.getLocalizedMessage());
 	   }
 	   return false;
    }
@@ -262,12 +270,12 @@ public class Organize
          v.setTimes(lastModifiedTime, null, creationTime);
       }
       catch (IOException ioe) {
-         System.out.println("Failed to transfer attributes for " + getName(from) + " ... continuing.");
+         out.println("Failed to transfer attributes for " + getName(from) + " ... continuing.");
       }
    }
    
-   static public void persistentBytewiseCopyTo(File from, File to, PrintWriter md5) throws IOException {
-      System.out.println("Copying \"" + getName(from) + "\" to \"" + getName(to) + "\"");
+   static public void persistentBytewiseCopyTo(File from, File to, PrintWriter md5, String srcMd5) throws IOException {
+      out.println("Copying \"" + getName(from) + "\" to \"" + getName(to) + "\"");
       
       try (RandomAccessFile fir = new RandomAccessFile(from, "r");
             BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(to))) {
@@ -285,7 +293,7 @@ public class Organize
         	 }
         	 catch (EOFException eof) { done = true; } // we're done 
         	 catch (IOException ioe) {
-        		 System.err.println("Problem reading byte " + pos + " from file.");
+        		 out.println("ERROR:Problem reading byte " + pos + " from file.");
         		 fir.seek(pos);
         		 failedCount++;
         		 if (failedCount > MAX_FAILED_COUNT)
@@ -299,20 +307,12 @@ public class Organize
         	 }
          }
          fos.close();
-         printHash(md5,to);
+         checkCopy(from, to, srcMd5, md5);
       }
    }
    
-   private static void printHash(PrintWriter out, File file) throws IOException {
-      printHash(out, MD5.getHash(file), file);
-   }
-   
-   private static void printHash(PrintWriter out, byte[] hash, File file) throws IOException {
-      out.println(new Md5Hash(hash) + "  " + file.getAbsolutePath());
-   }
-   
-   public static void memMapCopyFile(File source, File dest, PrintWriter md5) throws IOException {
-      System.out.println("Copying \"" + getName(source) + "\" to \"" + getName(dest) + "\" using memory mapping");
+   public static void memMapCopyFile(File source, File dest, PrintWriter md5, String srcMd5) throws IOException {
+      out.println("Copying \"" + getName(source) + "\" to \"" + getName(dest) + "\" using memory mapping");
         try (FileInputStream sourceis = new FileInputStream(source);
               FileOutputStream destos = new FileOutputStream(dest);
               FileChannel in = sourceis.getChannel();
@@ -324,21 +324,28 @@ public class Organize
              out.write(buf);
         }
         
-        printHash(md5,dest);
+        checkCopy(source, dest, srcMd5, md5);
    }
    
-    static public void simpleCopyFile(File in, File out, PrintWriter md5) throws IOException {
-      System.out.println("Copying \"" + getName(in) + "\" to \"" + getName(out) + "\"");
-      try(MD5InputStream md5is = new MD5InputStream(new FileInputStream(in));
-    		  BufferedInputStream fis  = new BufferedInputStream(md5is);
-    		  BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(out))) {
+    static public void simpleCopyFile(File src, File dest, PrintWriter md5, String srcMd5) throws IOException {
+      out.println("Copying \"" + getName(src) + "\" to \"" + getName(dest) + "\"");
+      try(BufferedInputStream fis  = new BufferedInputStream(new FileInputStream(src));
+    		  BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(dest))) {
     	  byte[] buf = new byte[10*1024*1024];
     	  int i = 0;
     	  while((i=fis.read(buf))!=-1)
     		  fos.write(buf, 0, i);
-    	  md5is.close();
-    	  printHash(md5,md5is.hash(),out);
       }
+      checkCopy(src, dest, srcMd5, md5);
+    }
+    
+    static void checkCopy(File src, File dest, String srcMd5, PrintWriter md5) throws IOException {
+        String newmd5 = new Md5Hash(MD5.getHash(dest)).toString();
+        if (!srcMd5.equals(newmd5)) { 
+      	  dest.delete();
+      	  throw new IOException("Copying " + src + " to " + dest + " resulted in corrupt file.");
+        }
+        md5.println(newmd5 + "||" + dest.getAbsolutePath());
     }
 }
 

@@ -11,16 +11,15 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import com.twmacinta.util.MD5;
 
-public class MakeMd5 {
+public class Md5File {
 	
 	private static Map<String, String> readMd5FileLookup(String... fileNames) throws IOException {
 		final Map<String,String> file2Md5 = new HashMap<String, String>();
@@ -43,26 +42,16 @@ public class MakeMd5 {
 		return file2Md5.isEmpty() ? null : file2Md5;
 	}
 	
-	static public void main(String[] args) throws Exception {
-
-		// make a backup of the organizied music:
-		String[] directoryStrs = new String[] { "C:\\Users\\Jim\\Pictures\\Pictures" };
+	public static void makeMd5File(String md5FileToWrite, String[] md5FilesToRead, String[] directoriesToScan, String failedFile) throws IOException {
+		final Map<String,String> file2md5 = readMd5FileLookup(Stream.concat(Stream.of(md5FileToWrite), 
+				Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0]))).toArray(String[]::new));
 		
-//		String md5FileStr = "C:\\Users\\Jim\\Documents\\md5.pics-reduced.txt";
-//		String md5FileToRead = "C:\\Users\\Jim\\Documents\\md5.pics.txt";
-		String md5FileStr = "C:\\Users\\Jim\\Documents\\md5.pics.txt";
-		String md5FileToRead = null;
-		
-		String failedFile = "C:\\Users\\Jim\\Documents\\failed.txt";
-
-		final Map<String,String> file2md5 = readMd5FileLookup(md5FileStr, md5FileToRead);
-		
-		File md5File = new File(md5FileStr);
+		File md5File = new File(md5FileToWrite);
 		try(PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile))) : new PrintWriter(System.err);
 				PrintWriter md5os = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File)));) {
 
 			// pass to calc md5
-			recheck(() -> Arrays.stream(directoryStrs).forEach(d -> uncheck( () -> {
+			recheck(() -> Arrays.stream(directoriesToScan).forEach(d -> uncheck( () -> {
 				File directory = new File(d);
 				if (!directory.exists()) 
 					failed.println(directory.toURI().toString() + "||" + "doesn't exist" );
@@ -72,6 +61,16 @@ public class MakeMd5 {
 			})));
 
 		}
+	}
+	
+	static public void main(String[] args) throws Exception {
+		
+		makeMd5File(
+				"C:\\Users\\Jim\\Documents\\md5.pics.txt", 
+				null, 
+				new String[] { "C:\\Users\\Jim\\Pictures\\Pictures" }, 
+				"C:\\Users\\Jim\\Documents\\failed.txt");
+
 		System.out.println("Finished Clean");
 	}
 
