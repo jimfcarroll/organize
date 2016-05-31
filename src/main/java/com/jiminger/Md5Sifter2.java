@@ -21,9 +21,7 @@ import java.util.Map;
 
 public class Md5Sifter2 {
 
-	public static final String[] md5files = new String[] { "C:\\Users\\Jim\\Documents\\md5.pics.txt" };
-	public static final String dirPrescedence = "C:\\Users\\Jim\\dirs.txt";
-	public static final String actionsFileName = "C:\\Users\\Jim\\Documents\\actions.txt";
+	private static final Map<String,Integer> ranking = uncheck(() -> readRanking(Config.dirPrescedence));
 
 	private static void readMd5File(Map<String,List<String>> md5map, String fileName) throws IOException {
 		File file = new File(fileName);
@@ -57,14 +55,19 @@ public class Md5Sifter2 {
 		return ret;
 	}
 	
+	private static int ranking(String dir) {
+		Integer rank = ranking.get(dir);
+		if (rank == null)
+			return ranking.size() + dir.length();
+		else return rank.intValue();
+	}
 	
 	public static void main(String[] args) throws Exception {
 		Map<String, List<String>>  md52files = new HashMap<>();
 
-		recheck(() -> Arrays.stream(md5files).forEach(fileName -> uncheck(() -> readMd5File(md52files,fileName)) ));
+		recheck(() -> Arrays.stream(Config.md5FilesToRead).forEach(fileName -> uncheck(() -> readMd5File(md52files,fileName)) ));
 		System.out.println("num duplicate groups: " + md52files.values().stream().filter(l -> l.size() > 1).count());
-		final Map<String,Integer> ranking = readRanking(dirPrescedence);
-		final File actionsFile = new File(actionsFileName);
+		final File actionsFile = new File(Config.actionsFileName);
 		try (final PrintWriter actions = new PrintWriter(new BufferedOutputStream(new FileOutputStream(actionsFile)),true);) {
 			md52files.values().stream().forEach(f -> {
 				if (f.size() > 1) {
@@ -81,7 +84,7 @@ public class Md5Sifter2 {
 							if (p1.equals(p2)) {
 								return o1.length() - o2.length();
 							}
-							return ranking.get(p1) - ranking.get(p2);
+							return ranking(p1) - ranking(p2);
 						}
 					});
 

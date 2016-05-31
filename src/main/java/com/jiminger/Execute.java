@@ -9,8 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Execute {
-	public static final String actionsFileName = "C:\\Users\\Jim\\Documents\\actions.txt";
-	
 	private static List<String> readActions(String actionsFile) throws IOException {
 		File file = new File(actionsFile);
 		if (!file.exists()) 
@@ -25,7 +23,7 @@ public class Execute {
 	
 
 	public static void main(String[] args) throws Exception {
-		List<String> commands = readActions(actionsFileName);
+		List<String> commands = readActions(Config.actionsFileName);
 		
 		commands.stream().filter(c -> !c.trim().startsWith("#")).filter(c -> !" ".equals(c.trim())).forEach(c -> {
 			String cmd = c.trim();

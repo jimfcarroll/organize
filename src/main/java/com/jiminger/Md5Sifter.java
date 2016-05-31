@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 public class Md5Sifter {
 
 	public static final String[] md5files = new String[] { "C:\\Users\\Jim\\Documents\\md5.pics.txt" };
-	
 	public static final String actionsFileName = "C:\\Users\\Jim\\Documents\\actions.txt";
 
 	private static void readMd5File(Map<String,List<String>> md5map, String fileName) throws IOException {

@@ -82,13 +82,13 @@ public class Organize {
 
    static public void main(String[] args) throws Exception {
       // make a backup of the organizied music:
-      String srcDirectoryStr = "C:\\Users\\Jim\\Pictures\\Pictures.fromFreeAgentPrimary";
-      String dstDirectoryStr = "C:\\Users\\Jim\\Pictures\\Pictures";
+      String srcDirectoryStr = Config.srcDirectoryStr;
+      String dstDirectoryStr = Config.dstDirectoryStr;
       
-      String md5File =  "C:\\Users\\Jim\\Documents\\md5.pics.txt";
-      String failedFile = "C:\\Users\\Jim\\Documents\\didntCopy.txt";
-      String dups = "DUPS";
-      String outFile = "C:\\Users\\Jim\\Documents\\out.fromFreeAgentPrimary.txt";
+      String md5File =  Config.md5FileToWrite;
+      String failedFile = Config.failedFile;
+      String dups = Config.dups;
+      String outFile = Config.outFile;
       
       if (outFile != null)
     	  out = new PrintWriter(new BufferedOutputStream(new FileOutputStream(outFile)), true);
@@ -212,7 +212,6 @@ public class Organize {
     	  }
       }
       else {
-    	  out.println("COPY " + from + " => " + to);
     	  if (!dryrun) {
     		  if (copyTo(from,to,md5,md5From))
     			  transferAttributes(from, to);
@@ -275,7 +274,7 @@ public class Organize {
    }
    
    static public void persistentBytewiseCopyTo(File from, File to, PrintWriter md5, String srcMd5) throws IOException {
-      out.println("Copying \"" + getName(from) + "\" to \"" + getName(to) + "\"");
+      out.println("PBCP \"" + getName(from) + "\" to \"" + getName(to) + "\"");
       
       try (RandomAccessFile fir = new RandomAccessFile(from, "r");
             BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(to))) {
@@ -312,7 +311,7 @@ public class Organize {
    }
    
    public static void memMapCopyFile(File source, File dest, PrintWriter md5, String srcMd5) throws IOException {
-      out.println("Copying \"" + getName(source) + "\" to \"" + getName(dest) + "\" using memory mapping");
+      out.println("MMCP \"" + getName(source) + "\" to \"" + getName(dest) + "\" using memory mapping");
         try (FileInputStream sourceis = new FileInputStream(source);
               FileOutputStream destos = new FileOutputStream(dest);
               FileChannel in = sourceis.getChannel();
@@ -328,7 +327,7 @@ public class Organize {
    }
    
     static public void simpleCopyFile(File src, File dest, PrintWriter md5, String srcMd5) throws IOException {
-      out.println("Copying \"" + getName(src) + "\" to \"" + getName(dest) + "\"");
+  	  out.println("COPY " + src + " => " + dest);
       try(BufferedInputStream fis  = new BufferedInputStream(new FileInputStream(src));
     		  BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(dest))) {
     	  byte[] buf = new byte[10*1024*1024];

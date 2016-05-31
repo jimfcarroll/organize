@@ -31,7 +31,7 @@ public class SimilarityAppRead {
 		public int read() throws IOException {
 			int r = u.read();
 			if (r >= 0) {
-				byte b = (byte) r;
+				// byte b = (byte) r;
 				//System.out.print(Character.toString(lookup[(b >>> 4) & 0xf]) + Character.toString(lookup[b & 0xf]) + " ");
 			}
 			return r;

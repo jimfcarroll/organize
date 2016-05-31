@@ -14,12 +14,10 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 import com.twmacinta.util.MD5;
 
-public class Md5File {
+public class Md5Verify {
 	
 	private static Map<String, String> readMd5FileLookup(String... fileNames) throws IOException {
 		final Map<String,String> file2Md5 = new HashMap<String, String>();
@@ -42,13 +40,12 @@ public class Md5File {
 		return file2Md5.isEmpty() ? null : file2Md5;
 	}
 	
-	public static void makeMd5File(String md5FileToWrite, String[] md5FilesToRead, String[] directoriesToScan, String failedFile) throws IOException {
-		final Map<String,String> file2md5 = readMd5FileLookup(Stream.concat(Stream.of(md5FileToWrite), 
-				Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0]))).toArray(String[]::new));
+	public static void verifyMd5File(String outputFile, String[] md5FilesToRead, String[] directoriesToScan, String failedFile) throws IOException {
+		final Map<String,String> file2md5 = readMd5FileLookup(md5FilesToRead);
 		
-		File md5File = new File(md5FileToWrite);
+		File outFile = new File(outputFile);
 		try(PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile))) : new PrintWriter(System.err);
-				PrintWriter md5os = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File)));) {
+				PrintWriter outos = new PrintWriter(new BufferedOutputStream(new FileOutputStream(outFile)));) {
 
 			// pass to calc md5
 			recheck(() -> Arrays.stream(directoriesToScan).forEach(d -> uncheck( () -> {
@@ -56,7 +53,7 @@ public class Md5File {
 				if (!directory.exists()) 
 					failed.println(directory.toURI().toString() + "||" + "doesn't exist" );
 				else {
-					doMd5(md5os, directory, file2md5);
+					doMd5(outos, directory, file2md5);
 				}
 			})));
 
@@ -65,37 +62,32 @@ public class Md5File {
 	
 	static public void main(String[] args) throws Exception {
 		
-		makeMd5File(
-				"C:\\Users\\Jim\\Documents\\md5.animations.txt", 
-				null, 
-				new String[] { "C:\\Users\\Jim\\Pictures\\Animations" }, 
+		verifyMd5File(
+				"C:\\Users\\Jim\\Documents\\verify.pics.txt", 
+				new String[] { "I:\\md5.pics.txt" }, 
+				new String[] { "I:\\Family Media\\Pictures" }, 
 				"C:\\Users\\Jim\\Documents\\failed.txt");
 
 		System.out.println("Finished Clean");
 	}
 
-	private static void doMd5(PrintWriter md5os, File file, Map<String, String> existing) throws IOException {
+	private static void doMd5(PrintWriter outos, File file, Map<String, String> existing) throws IOException {
 		if (!file.exists())
 			throw new FileNotFoundException("File " + file + " doesn't exist.");
 
 		if (file.isDirectory()) {
-			recheck(() -> Arrays.stream(file.listFiles()).forEach(f -> uncheck(() -> doMd5(md5os, f, existing))));
+			recheck(() -> Arrays.stream(file.listFiles()).forEach(f -> uncheck(() -> doMd5(outos, f, existing))));
 		} else {
-			String existingMd5 = Optional.ofNullable(existing).map(e -> e.get(file.getAbsolutePath())).orElse(null);
-			if (existingMd5 != null)
-				md5os.println(existingMd5 + "||" + file.getAbsolutePath());
+			String existingMd5 = existing.get(file.getAbsolutePath());
+			if (existingMd5 != null) {
+				String curDigest = new Md5Hash(MD5.getHash(file)).toString();
+				if (!existingMd5.equals(curDigest))
+					outos.println("BADMD5 " + file.getAbsolutePath());
+			}
 			else 
-				// otherwise it's a regular file
-				printHash(md5os, file);
+				outos.println("MISSING " + file.getAbsolutePath());
 		}
 	}
 
-	private static void printHash(PrintWriter out, File file) throws IOException {
-		printHash(out, MD5.getHash(file), file);
-	}
-
-	private static void printHash(PrintWriter out, byte[] hash, File file) throws IOException {
-		out.println(new Md5Hash(hash) + "||" + file.getAbsolutePath());
-	}
 }
 
