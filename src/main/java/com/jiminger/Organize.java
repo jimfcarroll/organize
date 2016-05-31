@@ -184,7 +184,7 @@ public class Organize {
       // see if the source file md5 exists
       String md5From = files2Md5.get(from.getAbsolutePath());
       if (md5From == null) {
-    	  md5From = new Md5Hash(MD5.getHash(from)).toString();
+    	  md5From = MD5.asHex(MD5.getHash(from)).toString();
       }
       
       // now see if it already exists at the destination somewhere
@@ -339,7 +339,7 @@ public class Organize {
     }
     
     static void checkCopy(File src, File dest, String srcMd5, PrintWriter md5) throws IOException {
-        String newmd5 = new Md5Hash(MD5.getHash(dest)).toString();
+        String newmd5 = MD5.asHex(MD5.getHash(dest)).toString();
         if (!srcMd5.equals(newmd5)) { 
       	  dest.delete();
       	  throw new IOException("Copying " + src + " to " + dest + " resulted in corrupt file.");

@@ -95,7 +95,7 @@ public class Md5File {
 	}
 
 	private static void printHash(PrintWriter out, byte[] hash, File file) throws IOException {
-		out.println(new Md5Hash(hash) + "||" + file.getAbsolutePath());
+		out.println(MD5.asHex(hash) + "||" + file.getAbsolutePath());
 	}
 }
 

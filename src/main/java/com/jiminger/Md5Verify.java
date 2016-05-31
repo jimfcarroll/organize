@@ -80,7 +80,7 @@ public class Md5Verify {
 		} else {
 			String existingMd5 = existing.get(file.getAbsolutePath());
 			if (existingMd5 != null) {
-				String curDigest = new Md5Hash(MD5.getHash(file)).toString();
+				String curDigest = MD5.asHex(MD5.getHash(file)).toString();
 				if (!existingMd5.equals(curDigest))
 					outos.println("BADMD5 " + file.getAbsolutePath());
 			}
