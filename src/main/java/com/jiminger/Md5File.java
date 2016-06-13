@@ -64,13 +64,7 @@ public class Md5File {
 	}
 	
 	static public void main(String[] args) throws Exception {
-		
-		makeMd5File(
-				"C:\\Users\\Jim\\Documents\\md5.animations.txt", 
-				null, 
-				new String[] { "C:\\Users\\Jim\\Pictures\\Animations" }, 
-				"C:\\Users\\Jim\\Documents\\failed.txt");
-
+		makeMd5File(Config.md5FileToWrite, Config.md5FilesToRead, Config.directoriesToScan, Config.failedFile);
 		System.out.println("Finished Clean");
 	}
 
@@ -79,7 +73,12 @@ public class Md5File {
 			throw new FileNotFoundException("File " + file + " doesn't exist.");
 
 		if (file.isDirectory()) {
-			recheck(() -> Arrays.stream(file.listFiles()).forEach(f -> uncheck(() -> doMd5(md5os, f, existing))));
+			File[] dirContents = file.listFiles();
+			if (dirContents == null || dirContents.length == 0) {
+				System.out.println("Empty directory: \"" + file + "\"");
+			} else {
+				recheck(() -> Arrays.stream(dirContents).forEach(f -> uncheck(() -> doMd5(md5os, f, existing))));
+			}
 		} else {
 			String existingMd5 = Optional.ofNullable(existing).map(e -> e.get(file.getAbsolutePath())).orElse(null);
 			if (existingMd5 != null)
