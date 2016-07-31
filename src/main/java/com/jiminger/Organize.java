@@ -27,8 +27,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import com.twmacinta.util.MD5;
 
@@ -81,29 +83,31 @@ public class Organize {
    static PrintWriter out = new PrintWriter(System.out);
 
    static public void main(String[] args) throws Exception {
-      // make a backup of the organizied music:
       String srcDirectoryStr = Config.srcDirectoryStr;
       String dstDirectoryStr = Config.dstDirectoryStr;
       
-      String md5File =  Config.md5FileToWrite;
+      String md5FileToWrite =  Config.md5FileToWrite;
+      String[] md5FilesToRead = Config.md5FilesToRead;
       String failedFile = Config.failedFile;
       String dups = Config.dups;
       String outFile = Config.outFile;
       
       if (outFile != null)
-    	  out = new PrintWriter(new BufferedOutputStream(new FileOutputStream(outFile)), true);
+    	  out = new PrintWriter(new BufferedOutputStream(new FileOutputStream(outFile,Config.appendOutfile)), true);
       
-      out.println("Copying files from " + srcDirectoryStr + " into " + dstDirectoryStr);
+      out.println("CPDIR: Copying files from " + srcDirectoryStr + " into " + dstDirectoryStr);
       
       File dstDirectory = new File(dstDirectoryStr);
       if(dstDirectory.exists() && dstDirectory.isDirectory()) {
-    	  out.println("Making MD5 file for " + dstDirectoryStr + " ...");
-    	  Md5File.makeMd5File(md5File, null, new String[] { dstDirectoryStr } , failedFile);
+    	  out.print("MKMD5: Making MD5 file for " + dstDirectoryStr + " ...");
+    	  out.flush();
+    	  Md5File.makeMd5File(md5FileToWrite, md5FilesToRead, new String[] { dstDirectoryStr } , failedFile);
     	  out.println("Done!");
       }      
       File srcDirectory = new File(srcDirectoryStr);
       
-      Map<String, List<String>> md52files = readMd5File(md5File);
+      Map<String, List<String>> md52files = readMd5File(Stream.concat(Stream.of(md5FileToWrite), 
+				Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0]))).toArray(String[]::new));
       Map<String, String> files2Md5 = invert(md52files);
       
       if (!srcDirectory.exists()) {
@@ -118,11 +122,11 @@ public class Organize {
          }
       }
       
-      try (PrintWriter md5os = (md5File != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File,true))) : null;
+      try (PrintWriter md5os = (md5FileToWrite != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5FileToWrite,true))) : null;
             PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile,true))) : new PrintWriter(System.err);) {
          copyFromTo(srcDirectory,dstDirectory,filter,md52files, files2Md5,md5os,failed,dups);
       }
-      out.println("Finished Clean");
+      out.println("DONE: Finished Clean");
    }
    
    public static void copyFromTo(File srcDirectory, File dstDirectory, Predicate<File> copyFilter, Map<String, List<String>> md52files, Map<String, String> files2Md5, PrintWriter md5os, PrintWriter failed, String dups) throws IOException {
@@ -147,7 +151,7 @@ public class Organize {
             failed.println("# The following is an entire directory failure:");
             failed.println( getName(srcDirectory) + " !=> " + getName(dstDirectory));
          }
-         out.println("Failed to copy directory " + getName(srcDirectory));
+         out.println("FAIL: Failed to copy directory " + getName(srcDirectory));
          files = new File[0];
       }
       
@@ -167,7 +171,7 @@ public class Organize {
                copyFromTo(subdir,newDestDirectory, copyFilter, md52files, files2Md5, md5os, failed, dups);
             }
             else
-               out.println("Skipping " + getName(subdir));
+               out.println("SKIP: Skipping " + getName(subdir));
          }
       }
    }
@@ -177,7 +181,7 @@ public class Organize {
 		   PrintWriter md5, PrintWriter failed, String copyDupFolder, int dupCount) throws IOException
    {
       if (copyFilter != null && !copyFilter.test(from)) {
-         out.println("Skipping " + getName(from));
+         out.println("SKIP: Skipping " + getName(from));
          return;
       }
       
@@ -190,7 +194,7 @@ public class Organize {
       // now see if it already exists at the destination somewhere
       List<String> dstWithSameMd5 = md52files.get(md5From);
       if (dstWithSameMd5 != null) {
-    	  // out.println("File \"" + from + "\" already exists in destination at " + dstWithSameMd5);
+    	  out.println("EXISTS: File \"" + from + "\" already exists in destination at " + dstWithSameMd5);
     	  return;
       }
       
@@ -208,7 +212,7 @@ public class Organize {
     		  }
     		  conditionalCopyTo(from,new File(newDestDirectory,from.getName()),copyFilter,md52files, files2Md5, md5,failed,copyDupFolder, ++dupCount);
     	  } else {
-    		  out.println("File \"" + getName(from) + "\" already exists at the destination.");
+    		  out.println("EXISTS: File \"" + getName(from) + "\" already exists at the destination.");
     	  }
       }
       else {
@@ -221,21 +225,21 @@ public class Organize {
    
    static public boolean copyTo(File from, File to, PrintWriter md5, String srcMd5) throws IOException {
 	   try { simpleCopyFile(from,to,md5,srcMd5); return true; }
-	   catch (IOException ioe) { out.println("ERROR:Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
-	   out.println ("ERROR:Trying again....");
+	   catch (IOException ioe) { out.println("ERROR: Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+	   out.println ("ERROR: Trying again....");
 	   try { simpleCopyFile(from,to,md5,srcMd5); return true; }
-	   catch (IOException ioe) { out.println("ERROR:Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
-	   out.println ("ERROR:Trying again using memory mapping ....");
+	   catch (IOException ioe) { out.println("ERROR: Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+	   out.println ("ERROR: Trying again using memory mapping ....");
 	   try { memMapCopyFile(from,to,md5,srcMd5); return true; }
-	   catch (IOException ioe) { out.println("ERROR:Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
-	   out.println ("ERROR:Trying again using persistent byte copy ....");
+	   catch (IOException ioe) { out.println("ERROR: Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+	   out.println ("ERROR: Trying again using persistent byte copy ....");
 	   try { persistentBytewiseCopyTo(from,to,md5,srcMd5); return true; }
-	   catch (IOException ioe) { out.println("ERROR:Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
+	   catch (IOException ioe) { out.println("ERROR: Failed on attempt to copy \"" + from + "\" to \"" + to + ".\" due to " + ioe.getLocalizedMessage()); }
 	   
 	   // if we got here then this failed... .so we should remove the to file.
 	   if (to.exists())
 	      try { Files.delete(to.toPath()); } catch (IOException ioe) {
-	         out.println("ERROR:Failed to delete " + to.getAbsolutePath() + " " + ioe.getLocalizedMessage());
+	         out.println("ERROR: Failed to delete " + to.getAbsolutePath() + " " + ioe.getLocalizedMessage());
 	   }
 	   return false;
    }
@@ -269,12 +273,12 @@ public class Organize {
          v.setTimes(lastModifiedTime, null, creationTime);
       }
       catch (IOException ioe) {
-         out.println("Failed to transfer attributes for " + getName(from) + " ... continuing.");
+         out.println("ERROR: Failed to transfer attributes for " + getName(from) + " ... continuing.");
       }
    }
    
    static public void persistentBytewiseCopyTo(File from, File to, PrintWriter md5, String srcMd5) throws IOException {
-      out.println("PBCP \"" + getName(from) + "\" to \"" + getName(to) + "\"");
+      out.println("PBCP: \"" + getName(from) + "\" to \"" + getName(to) + "\"");
       
       try (RandomAccessFile fir = new RandomAccessFile(from, "r");
             BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(to))) {
@@ -292,7 +296,7 @@ public class Organize {
         	 }
         	 catch (EOFException eof) { done = true; } // we're done 
         	 catch (IOException ioe) {
-        		 out.println("ERROR:Problem reading byte " + pos + " from file.");
+        		 out.println("ERROR: Problem reading byte " + pos + " from file.");
         		 fir.seek(pos);
         		 failedCount++;
         		 if (failedCount > MAX_FAILED_COUNT)
@@ -311,7 +315,7 @@ public class Organize {
    }
    
    public static void memMapCopyFile(File source, File dest, PrintWriter md5, String srcMd5) throws IOException {
-      out.println("MMCP \"" + getName(source) + "\" to \"" + getName(dest) + "\" using memory mapping");
+      out.println("MMCP: \"" + getName(source) + "\" to \"" + getName(dest) + "\" using memory mapping");
         try (FileInputStream sourceis = new FileInputStream(source);
               FileOutputStream destos = new FileOutputStream(dest);
               FileChannel in = sourceis.getChannel();
@@ -327,7 +331,7 @@ public class Organize {
    }
    
     static public void simpleCopyFile(File src, File dest, PrintWriter md5, String srcMd5) throws IOException {
-  	  out.println("COPY " + src + " => " + dest);
+  	  out.println("SCOPY: " + src + " => " + dest);
       try(BufferedInputStream fis  = new BufferedInputStream(new FileInputStream(src));
     		  BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(dest))) {
     	  byte[] buf = new byte[10*1024*1024];

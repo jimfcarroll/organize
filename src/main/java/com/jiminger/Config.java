@@ -8,23 +8,24 @@ public class Config {
 	// Md5Sifter
 	public static final String dirPrescedence = "C:\\Users\\Jim\\dirs.animations.txt";
 	
-	// Md5File
-	public static final String md5FileToWrite = "I:\\md5.txt";
+	// Md5File, Organize, Md5Verify(only when deleting)
+	public static final String md5FileToWrite = "C:\\Users\\Jim\\Pictures\\md5.Vids.txt";
 
 	// Md5File, Md5Verify, Organize, Md5Sifter
-	public static final String[] md5FilesToRead = new String[] { "I:\\md5.pics.txt", "I:\\md5.FamilyMedia.OldHomeMovieFilm.txt" };
+	public static final String[] md5FilesToRead = new String[] { "I:\\md5.txt" };
 	
 	// Md5File, Md5Verify
-	public static final String[] directoriesToScan = new String[] { "I:\\" };
+	public static final String[] directoriesToScan = new String[] { "C:\\Users\\Jim\\Pictures\\Videos" };
 
 	// Md5Verify
-	public static final String verifyOutputFile = "C:\\Users\\Jim\\Documents\\verify.pics.txt";
+	public static final String verifyOutputFile = "C:\\Users\\Jim\\Pictures\\verify.txt";
 	
 	// Organize
-	public static final String srcDirectoryStr = "X:\\Finance";
-	public static final String dstDirectoryStr = "C:\\Users\\Jim\\Pictures\\Finance";
+	public static final String srcDirectoryStr = "C:\\Users\\Jim\\Pictures\\Videos.fromMBLSharedVids";
+	public static final String dstDirectoryStr = "C:\\Users\\Jim\\Pictures\\Videos";
 	public static final String dups = "DUPS";
-	public static final String outFile = "C:\\Users\\Jim\\Documents\\out.finance.txt";
+	public static final String outFile = "C:\\Users\\Jim\\Documents\\out.txt";
+	public static final boolean appendOutfile = true;
 	
 	// Md5File, Md5Verify, Organize
 	public static final String failedFile = "C:\\Users\\Jim\\Documents\\failed.txt";

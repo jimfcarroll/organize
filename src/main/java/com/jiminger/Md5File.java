@@ -11,8 +11,10 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -21,7 +23,7 @@ import com.twmacinta.util.MD5;
 
 public class Md5File {
 	
-	private static Map<String, String> readMd5FileLookup(String... fileNames) throws IOException {
+	public static Map<String, String> readMd5FileLookup(String... fileNames) throws IOException {
 		final Map<String,String> file2Md5 = new HashMap<String, String>();
 		recheck(() -> Arrays.stream(fileNames).forEach(fileName -> uncheck(() -> {
 			if (fileName != null) {
@@ -42,6 +44,29 @@ public class Md5File {
 		return file2Md5.isEmpty() ? null : file2Md5;
 	}
 	
+	public static Map<String,List<String>> readMd5File(String... fileNames) throws IOException {
+		Map<String,List<String>> md5map = new HashMap<>();
+		recheck(() -> Arrays.stream(fileNames).forEach( fileName -> uncheck(() -> {
+			File file = new File(fileName);
+			if (!file.exists()) throw new FileNotFoundException("MD5 file " + fileName + " doesn't exist.");
+			try (BufferedReader br = new BufferedReader(new FileReader(file));) {
+				for (String line = br.readLine(); line != null; line = br.readLine()) {
+					String[] entry = line.split("\\|\\|");
+					if (entry.length != 2)
+						throw new RuntimeException("An md5 file entry must have 2 values separated by a \"||\". The file " + fileName + 
+								" appears to have an entry of the form:" + line);
+					final String key = entry[0];
+					List<String> filesWithMd5 = md5map.get(key);
+					if (filesWithMd5 == null) {
+						filesWithMd5 = new ArrayList<>(2);
+						md5map.put(key, filesWithMd5);
+					}
+					filesWithMd5.add(entry[1]);
+				}
+			}})));
+		return md5map;
+	}
+	   
 	public static void makeMd5File(String md5FileToWrite, String[] md5FilesToRead, String[] directoriesToScan, String failedFile) throws IOException {
 		final Map<String,String> file2md5 = readMd5FileLookup(Stream.concat(Stream.of(md5FileToWrite), 
 				Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0]))).toArray(String[]::new));
