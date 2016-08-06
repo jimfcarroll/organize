@@ -67,7 +67,7 @@ public class Md5File {
 		return md5map;
 	}
 	   
-	public static void makeMd5File(String md5FileToWrite, String[] md5FilesToRead, String[] directoriesToScan, String failedFile) throws IOException {
+	public static void makeMd5File(String md5FileToWrite, String[] md5FilesToRead, String[] directoriesToScan, String failedFile, boolean deleteEmtyDirs) throws IOException {
 		final Map<String,String> file2md5 = readMd5FileLookup(Stream.concat(Stream.of(md5FileToWrite), 
 				Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0]))).toArray(String[]::new));
 		
@@ -81,7 +81,7 @@ public class Md5File {
 				if (!directory.exists()) 
 					failed.println(directory.toURI().toString() + "||" + "doesn't exist" );
 				else {
-					doMd5(md5os, directory, file2md5);
+					doMd5(md5os, directory, file2md5, deleteEmtyDirs);
 				}
 			})));
 
@@ -89,11 +89,11 @@ public class Md5File {
 	}
 	
 	static public void main(String[] args) throws Exception {
-		makeMd5File(Config.md5FileToWrite, Config.md5FilesToRead, Config.directoriesToScan, Config.failedFile);
+		makeMd5File(Config.md5FileToWrite, Config.md5FilesToRead, Config.directoriesToScan, Config.failedFile, Config.deleteEmptyDirs);
 		System.out.println("Finished Clean");
 	}
 
-	private static void doMd5(PrintWriter md5os, File file, Map<String, String> existing) throws IOException {
+	private static void doMd5(PrintWriter md5os, File file, Map<String, String> existing, boolean deleteEmtyDirs) throws IOException {
 		if (!file.exists())
 			throw new FileNotFoundException("File " + file + " doesn't exist.");
 
@@ -101,8 +101,11 @@ public class Md5File {
 			File[] dirContents = file.listFiles();
 			if (dirContents == null || dirContents.length == 0) {
 				System.out.println("Empty directory: \"" + file + "\"");
+				if (!file.delete()) {
+					System.out.println("FAILED: to delete empty directory: " + file.getAbsolutePath());
+				}
 			} else {
-				recheck(() -> Arrays.stream(dirContents).forEach(f -> uncheck(() -> doMd5(md5os, f, existing))));
+				recheck(() -> Arrays.stream(dirContents).forEach(f -> uncheck(() -> doMd5(md5os, f, existing, deleteEmtyDirs))));
 			}
 		} else {
 			String existingMd5 = Optional.ofNullable(existing).map(e -> e.get(file.getAbsolutePath())).orElse(null);
