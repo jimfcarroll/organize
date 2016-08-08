@@ -193,11 +193,16 @@ public class Organize {
         }
     }
 
+    private static void bufClearData(final List<ByteBuffer> fileContents) {
+        if (fileContents != null)
+            fileContents.stream().forEach(bb -> bb.clear());
+    }
+
     private static void readFromStream(final InputStream is, final List<ByteBuffer> fileContents, final long sourceFileSize) throws IOException {
         long remainingBytes = sourceFileSize;
         int index = 0;
         // reset the bb to refill it.
-        fileContents.stream().forEach(bb -> bb.clear());
+        bufClearData(fileContents);
         while (remainingBytes > 0) {
             final ByteBuffer bb = fileContents.get(index++);
             final long bbSize = bb.remaining();
@@ -226,6 +231,9 @@ public class Organize {
     static public void conditionalCopyTo(final File from, final File to, final Predicate<File> copyFilter,
             final Map<String, List<String>> md52files, final Map<String, String> files2Md5,
             final PrintWriter md5, final PrintWriter failed, final String copyDupFolder, int dupCount) throws IOException {
+
+        bufClearData(fileContents);
+
         if (copyFilter != null && !copyFilter.test(from)) {
             out.println("SKIP: Skipping " + getName(from));
             return;
@@ -293,9 +301,13 @@ public class Organize {
         }
     }
 
+    static private boolean bufHasData(final List<ByteBuffer> fileContents) {
+        return fileContents != null && fileContents.get(0).position() > 0;
+    }
+
     static public boolean copyTo(final File from, final List<ByteBuffer> fileContents, final File to, final PrintWriter md5, final String srcMd5)
             throws IOException {
-        if (fileContents != null) {
+        if (bufHasData(fileContents)) {
             bufCopy(fileContents, from, to, srcMd5, md5);
             return true;
         } else {

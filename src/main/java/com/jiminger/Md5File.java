@@ -103,6 +103,11 @@ public class Md5File {
             throw new FileNotFoundException("File " + file + " doesn't exist.");
 
         if (file.isDirectory()) {
+            if (file.getAbsolutePath().equals("I:\\tmp")) {
+                System.out.println("SKIPPING: " + file.getAbsolutePath());
+                return;
+            }
+
             final File[] dirContents = file.listFiles();
             if (dirContents == null || dirContents.length == 0) {
                 System.out.println("Empty directory: \"" + file + "\"");
