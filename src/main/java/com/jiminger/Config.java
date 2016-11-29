@@ -1,36 +1,74 @@
 package com.jiminger;
 
+import java.io.File;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Predicate;
+
 public class Config {
+    public static final String mountPoint = "/media/jim/Seagate Expansion Drive";
+    // public static final String mountPoint = "/media/jim/BigBackUp-4T-Damaged";
 
-	// Md5Sifter, Execute
-	public static final String actionsFileName = "C:\\Users\\Jim\\Documents\\actions.txt";
+    // Md5Sifter, Execute
+    public static final String actionsFileName = "/tmp/actions.txt";
 
-	// Md5Sifter
-	public static final String dirPrescedence = "C:\\Users\\Jim\\dirs.animations.txt";
-	
-	// Md5File, Organize, Md5Verify(only when deleting)
-	public static final String md5FileToWrite = "I:\\md5.wmp3.txt";
+    // Md5Sifter
+    public static final String dirPrescedence = "/media/jim/Seagate Expansion Drive/dirPresedence.txt";
 
-	// Md5File, Md5Verify, Organize, Md5Sifter
-	public static final String[] md5FilesToRead = new String[] { "I:\\md5.txt" };
-	
-	// Md5File, Md5Verify
-	public static final String[] directoriesToScan = new String[] { "I:\\" };
+    // Md5File, Organize, Md5Verify(only when deleting)
+    public static final String md5FileToWrite = mountPoint + "/md5.txt";
 
-	// Md5File
-	public static final boolean deleteEmptyDirs = true;
-	
-	// Md5Verify
-	public static final String verifyOutputFile = "C:\\Users\\Jim\\Pictures\\verify.txt";
-	
-	// Organize
-	public static final String srcDirectoryStr = "C:\\Users\\Jim\\Pictures\\WordMP3.fromMBL";
-	public static final String dstDirectoryStr = "I:\\Audio\\Spoken Word\\WordMP3";
-	public static final String dups = "DUPS";
-	public static final String outFile = "C:\\Users\\Jim\\Documents\\out.audio.txt";
-	public static final boolean appendOutfile = true;
-	public static final long byteBufferSize = 4L * 1024L * 1024L * 1024;
-	
-	// Md5File, Md5Verify, Organize
-	public static final String failedFile = "C:\\Users\\Jim\\Documents\\failed.txt";
+    // Md5File, Md5Verify, Organize, Md5Sifter
+    public static final String[] md5FilesToRead = new String[] { mountPoint + "/md5.copy.txt" };
+    // public static final String[] md5FilesToRead = new String[] {};
+
+    // Md5File, Md5Verify
+    public static final String[] directoriesToScan = new String[] { mountPoint };
+
+    // Md5File
+    public static final boolean deleteEmptyDirs = true;
+
+    // Md5Verify
+    public static final String verifyOutputFile = mountPoint + "/verify.txt";
+
+    // Organize
+    public static final String srcDirectoryStr = "/media/jim/209C7F039C7ED2B0/Users/ginger/Pictures";
+    public static final String dstDirectoryStr = "/home/jim/Landing";
+    public static final String dups = "DUPS";
+    public static final boolean appendOutfile = true;
+    public static final long byteBufferSize = 4L * 1024L * 1024L * 1024;
+
+    // Organize, Md5Verify
+    public static final String outFile = "/tmp/out-tmp.txt";
+
+    // Md5File, Md5Verify, Organize
+    public static final String failedFile = "/tmp/failed-tmp.txt";
+
+    // Md5File, Organize
+    public static String[] filesToSkipAr = { "thumbs.db", "thumbs.db:encryptable", "recycler", "zbthumbnail.info", "zbthumbnail (2).info",
+            "$recycle.bin", "system volume information", "desktop.ini", "desktop (2).ini", ".appledouble", ".ds_store", "digikam4.db",
+            "thumbnails-digikam.db", "sample pictures.lnk", "itunes", "album artwork", "amazon mp3", "podcasts", "picasa.ini"
+    };
+
+    public static String[] fileNameContains = { mountPoint.toLowerCase() + "/md5.", mountPoint.toLowerCase() + "/tmp",
+            mountPoint.toLowerCase() + "/verify." };
+
+    public static Set<String> filesToSkip = new HashSet<>();
+    static {
+        filesToSkip.addAll(Arrays.asList(filesToSkipAr));
+    }
+
+    public static Predicate<File> filter = sourceFile -> {
+        if (sourceFile.getName().startsWith(".") || filesToSkip.contains(sourceFile.getName().toLowerCase()))
+            return false;
+        else {
+            for (final String fn : fileNameContains) {
+                if (sourceFile.getAbsolutePath().toLowerCase().contains(fn))
+                    return false;
+            }
+            return true;
+        }
+    };
+
 }

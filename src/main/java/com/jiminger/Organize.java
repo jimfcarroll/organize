@@ -25,11 +25,9 @@ import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -38,17 +36,6 @@ import com.twmacinta.util.MD5InputStream;
 
 public class Organize {
     private static boolean dryrun = false;
-
-    static String[] filesToSkipAr = { "thumbs.db", "thumbs.db:encryptable", "recycler", "zbthumbnail.info", "zbthumbnail (2).info", "$recycle.bin",
-            "system volume information", "desktop.ini", "desktop (2).ini", ".appledouble", ".ds_store", "digikam4.db", "thumbnails-digikam.db",
-            "sample pictures.lnk", "itunes", "album artwork", "amazon mp3", "podcasts", "picasa.ini" };
-
-    static Set<String> filesToSkip = new HashSet<>();
-    static {
-        filesToSkip.addAll(Arrays.asList(filesToSkipAr));
-    }
-
-    static Predicate<File> filter = sourceFile -> !(filesToSkip.contains(sourceFile.getName().toLowerCase()) || sourceFile.getName().startsWith("."));
 
     private static Map<String, String> invert(final Map<String, List<String>> md52files) {
         final Map<String, String> ret = new HashMap<>();
@@ -129,7 +116,7 @@ public class Organize {
                 ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5FileToWrite, true)), true) : null;
                 PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile, true)))
                         : new PrintWriter(System.err);) {
-            copyFromTo(srcDirectory, dstDirectory, filter, md52files, files2Md5, md5os, failed, dups);
+            copyFromTo(srcDirectory, dstDirectory, Config.filter, md52files, files2Md5, md5os, failed, dups);
         }
         out.println("DONE: Finished Clean");
     }
