@@ -116,7 +116,7 @@ public class Organize {
                 ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5FileToWrite, true)), true) : null;
                 PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile, true)))
                         : new PrintWriter(System.err);) {
-            copyFromTo(srcDirectory, dstDirectory, Config.filter, md52files, files2Md5, md5os, failed, dups);
+            copyFromTo(srcDirectory, dstDirectory, Config.organizeFilter, md52files, files2Md5, md5os, failed, dups);
         }
         out.println("DONE: Finished Clean");
     }

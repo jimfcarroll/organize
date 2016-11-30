@@ -102,7 +102,7 @@ public class Md5File {
         if (!file.exists())
             throw new FileNotFoundException("File " + file + " doesn't exist.");
 
-        if (!Config.filter.test(file)) {
+        if (!Config.md5FileFilter.test(file)) {
             System.out.println("SKIPPING: " + file.getAbsolutePath());
             return;
         }
@@ -110,9 +110,11 @@ public class Md5File {
         if (file.isDirectory()) {
             final File[] dirContents = file.listFiles();
             if (dirContents == null || dirContents.length == 0) {
-                System.out.println("Empty directory: \"" + file + "\"");
-                if (!file.delete()) {
-                    System.out.println("FAILED: to delete empty directory: " + file.getAbsolutePath());
+                if (deleteEmtyDirs) {
+                    System.out.println("Empty directory: \"" + file + "\"");
+                    if (!file.delete()) {
+                        System.out.println("FAILED: to delete empty directory: " + file.getAbsolutePath());
+                    }
                 }
             } else {
                 recheck(() -> Arrays.stream(dirContents).forEach(f -> uncheck(() -> doMd5(md5os, f, existing, deleteEmtyDirs))));

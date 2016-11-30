@@ -27,30 +27,31 @@ public class Config {
     public static final String[] directoriesToScan = new String[] { mountPoint };
 
     // Md5File
-    public static final boolean deleteEmptyDirs = true;
+    public static final boolean deleteEmptyDirs = false;
 
     // Md5Verify
     public static final String verifyOutputFile = mountPoint + "/verify.txt";
 
     // Organize
-    public static final String srcDirectoryStr = "/media/jim/209C7F039C7ED2B0/Users/ginger/Pictures";
-    public static final String dstDirectoryStr = "/home/jim/Landing";
+    public static final String srcDirectoryStr = "/home/jim/Landing";
+    public static final String dstDirectoryStr = "/media/jim/Seagate Expansion Drive/Family Media/Pictures/Scanned.bad";
     public static final String dups = "DUPS";
     public static final boolean appendOutfile = true;
     public static final long byteBufferSize = 4L * 1024L * 1024L * 1024;
 
     // Organize, Md5Verify
-    public static final String outFile = "/tmp/out-tmp.txt";
+    public static final String outFile = "/tmp/out.txt";
 
     // Md5File, Md5Verify, Organize
-    public static final String failedFile = "/tmp/failed-tmp.txt";
+    public static final String failedFile = "/tmp/failed.txt";
 
-    // Md5File, Organize
+    // Organize
     public static String[] filesToSkipAr = { "thumbs.db", "thumbs.db:encryptable", "recycler", "zbthumbnail.info", "zbthumbnail (2).info",
             "$recycle.bin", "system volume information", "desktop.ini", "desktop (2).ini", ".appledouble", ".ds_store", "digikam4.db",
             "thumbnails-digikam.db", "sample pictures.lnk", "itunes", "album artwork", "amazon mp3", "podcasts", "picasa.ini"
     };
 
+    // Md5File, Organize
     public static String[] fileNameContains = { mountPoint.toLowerCase() + "/md5.", mountPoint.toLowerCase() + "/tmp",
             mountPoint.toLowerCase() + "/verify." };
 
@@ -59,7 +60,7 @@ public class Config {
         filesToSkip.addAll(Arrays.asList(filesToSkipAr));
     }
 
-    public static Predicate<File> filter = sourceFile -> {
+    public static Predicate<File> organizeFilter = sourceFile -> {
         if (sourceFile.getName().startsWith(".") || filesToSkip.contains(sourceFile.getName().toLowerCase()))
             return false;
         else {
@@ -69,6 +70,14 @@ public class Config {
             }
             return true;
         }
+    };
+
+    public static Predicate<File> md5FileFilter = sourceFile -> {
+        for (final String fn : fileNameContains) {
+            if (sourceFile.getAbsolutePath().toLowerCase().contains(fn))
+                return false;
+        }
+        return true;
     };
 
 }
