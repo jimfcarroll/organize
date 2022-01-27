@@ -19,6 +19,11 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-log4j12</artifactId>
+        <version>1.7.30</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
   
@@ -29,9 +34,32 @@
     </dependency>
     <dependency>
       <groupId>net.dempsy</groupId>
+      <artifactId>dempsy-vfs.api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>net.dempsy</groupId>
       <artifactId>dempsy-serialization.jackson</artifactId>
     </dependency>
-  </dependencies>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tika</groupId>
+      <artifactId>tika-core</artifactId>
+      <version>2.2.1</version>
+    </dependency>
+    <dependency> <!-- Required if using the tar utils.vfs or many compression file systems -->
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+        <version>1.21</version>
+    </dependency>
+    <dependency><!-- Required if using the xz utils.vfs file system -->
+      <groupId>org.tukaani</groupId>
+      <artifactId>xz</artifactId>
+      <version>1.8</version>
+    </dependency>
+   </dependencies>
 
   <build>
     <plugins>
