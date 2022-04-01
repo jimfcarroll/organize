@@ -1,5 +1,7 @@
 package com.jiminger;
 
+import static net.dempsy.util.Functional.uncheck;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -14,6 +16,10 @@ import net.dempsy.serialization.jackson.JsonUtils;
 
 @JsonInclude(Include.NON_EMPTY)
 public class Config {
+
+    private static final String FILE_RECORD_FILE_TO_WRITE_STR = "md5FileToWrite";
+
+    public static final String FILE_RECORD_FILE_TO_WRITE = uncheck(() -> Config.class.getField(FILE_RECORD_FILE_TO_WRITE_STR).getName());
 
     public static Config load(final String configPath) throws IOException {
         final File configFile = new File(configPath);
@@ -49,10 +55,15 @@ public class Config {
         }
     }
 
-    // Md5File, Organize, Md5Verify(only when deleting)
+    public final boolean enableLocalFileCaching;
+
+    // Md5File, Organize, Md5Verify(only when deleting), MergeRecords
     public final String md5FileToWrite;
 
-    // Md5File, Md5Verify, Organize, Md5Sifter
+    // Md5File
+    public final String[] passwordsToTry;
+
+    // Md5File, Md5Verify, Organize, Md5Sifter, MergeRecords
     public final String[] md5FilesToRead;
 
     // Md5File, Md5Verify
@@ -144,6 +155,8 @@ public class Config {
         failedFile = "/tmp/failed.txt";
         fileNameContains = new String[0];
         avoidMemMap = false;
+        enableLocalFileCaching = false;
+        passwordsToTry = null;
     }
 
 }
