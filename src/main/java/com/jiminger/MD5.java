@@ -6,9 +6,9 @@ import java.io.IOException;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 
-import com.jiminger.FileSpec.ByteBufferResource;
-
 import net.dempsy.util.io.MegaByteBuffer;
+import net.dempsy.vfs.FileSpec;
+import net.dempsy.vfs.FileSpec.ByteBufferResource;
 
 public class MD5 {
 

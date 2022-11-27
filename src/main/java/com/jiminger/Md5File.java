@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import net.dempsy.serialization.jackson.JsonUtils;
 import net.dempsy.util.Functional;
+import net.dempsy.vfs.FileSpec;
 import net.dempsy.vfs.SevenZFileSystem;
 import net.dempsy.vfs.Vfs;
 import net.dempsy.vfs.ZCompressedFileSystem;
@@ -30,6 +31,7 @@ import net.dempsy.vfs.bz.Bz2FileSystem;
 import net.dempsy.vfs.gz.GzFileSystem;
 import net.dempsy.vfs.local.LocalFileSystem;
 import net.dempsy.vfs.xz.XzFileSystem;
+import net.dempsy.vfs.zip.CopyZipFileSystem;
 import net.sf.sevenzipjbinding.SevenZip;
 
 public class Md5File {
@@ -38,12 +40,14 @@ public class Md5File {
     private static Vfs vfs;
 
     private static Vfs getVfs(final String[] passwordsToTry) throws IOException {
-        final var szfs = new SevenZFileSystem("sevenz", "rar", "tar", "tgz|gz", "tbz2|bz2", "txz|xz", "zip");
+        final var szfs = new SevenZFileSystem("sevenz", "rar", "tar", "tgz|gz", "tbz2|bz2", "txz|xz" /* , "zip" */);
         if(passwordsToTry != null && passwordsToTry.length > 0)
             szfs.tryPasswords(passwordsToTry);
 
         return new Vfs(
+            new CopyZipFileSystem(),
             szfs,
+            // new DecompressedFileSystem(new GzFileSystem()),
             new GzFileSystem(),
             new ZCompressedFileSystem(),
             new Bz2FileSystem(),
@@ -171,9 +175,6 @@ public class Md5File {
 
             final boolean isArchiveOrCompressed = !fSpec.isDirectory(); // if it's recursable but NOT a directory, then it's an archive or it's compressed
 
-            if(fSpec.uri().toString()
-                .equals("sevenz:file:/mnt/qnapMedia/BigBackup-4T-Damaged/Backup-Archived/My%20BigOven%20Recipes-2.7z!My%20BigOven%20Recipes/Data/DUPS0"))
-                System.out.println();
             System.out.println("LISTING : " + fSpec.uri());
 
             final FileSpec[] dirContents;

@@ -8,7 +8,7 @@
   <description>Backup data</description>
   
   <properties>
-    <dempsy-commons.version>2.3.4-SNAPSHOT</dempsy-commons.version>
+    <dempsy-commons.version>2.4.1-SNAPSHOT</dempsy-commons.version>
   </properties>
   <dependencyManagement>
     <dependencies>

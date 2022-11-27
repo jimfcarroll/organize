@@ -84,5 +84,4 @@ public class MergeRecords {
             System.out.println("Done!");
         }
     }
-
 }

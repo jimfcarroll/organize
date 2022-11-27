@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import net.dempsy.serialization.jackson.JsonUtils;
+import net.dempsy.vfs.FileSpec;
 
 @JsonInclude(Include.NON_EMPTY)
 public class Config {
