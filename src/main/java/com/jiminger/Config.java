@@ -133,7 +133,7 @@ public class Config {
     public Predicate<FileSpec> md5FileFilter() {
         return sourceFile -> {
             for(final String fn: fileNameContains) {
-                if(sourceFile.uri().toString().toLowerCase().contains(fn))
+                if(uncheck(() -> sourceFile.uri()).toString().toLowerCase().contains(fn))
                     return false;
             }
             return true;

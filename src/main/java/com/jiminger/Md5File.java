@@ -20,18 +20,23 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jiminger.Config.FileReference;
 
 import net.dempsy.serialization.jackson.JsonUtils;
 import net.dempsy.util.Functional;
+import net.dempsy.vfs.CopyingArchiveFileSystem;
 import net.dempsy.vfs.FileSpec;
-import net.dempsy.vfs.SevenZFileSystem;
+import net.dempsy.vfs.OpContext;
+import net.dempsy.vfs.Path;
+import net.dempsy.vfs.SevenZArchiveFileSystem;
 import net.dempsy.vfs.Vfs;
 import net.dempsy.vfs.ZCompressedFileSystem;
 import net.dempsy.vfs.bz.Bz2FileSystem;
 import net.dempsy.vfs.gz.GzFileSystem;
 import net.dempsy.vfs.local.LocalFileSystem;
+import net.dempsy.vfs.tar.TarFileSystem;
 import net.dempsy.vfs.xz.XzFileSystem;
-import net.dempsy.vfs.zip.CopyZipFileSystem;
+import net.dempsy.vfs.zip.ZipFileSystem;
 import net.sf.sevenzipjbinding.SevenZip;
 
 public class Md5File {
@@ -40,51 +45,45 @@ public class Md5File {
     private static Vfs vfs;
 
     private static Vfs getVfs(final String[] passwordsToTry) throws IOException {
-        final var szfs = new SevenZFileSystem("sevenz", "rar", "tar", "tgz|gz", "tbz2|bz2", "txz|xz" /* , "zip" */);
+        // final var szfs = new SevenZArchiveFileSystem("sevenz", "rar", "tar", "tgz|gz", "tbz2|bz2", "txz|xz" /* , "zip" */);
+        // if(passwordsToTry != null && passwordsToTry.length > 0)
+        // szfs.tryPasswords(passwordsToTry);
+        //
+        // return new Vfs(
+        // new CopyZipFileSystem(),
+        // szfs,
+        // // new DecompressedFileSystem(new GzFileSystem()),
+        // new GzFileSystem(),
+        // new ZCompressedFileSystem(),
+        // new Bz2FileSystem(),
+        // new XzFileSystem()
+        //
+        // );
+
+        SevenZArchiveFileSystem szfs;
+
+        final var ret = new Vfs(
+            // szfs = new SevenZArchiveFileSystem("sevenz", "rar", "tar", "tgz|gz", "tbz2|bz2", "txz|xz", "zip"),
+            // new GzFileSystem(),
+            // new ZCompressedFileSystem(),
+            // new Bz2FileSystem()
+            //
+            // , new XzFileSystem()
+
+            new CopyingArchiveFileSystem(new TarFileSystem()),
+            new GzFileSystem(),
+            new CopyingArchiveFileSystem(new ZipFileSystem()),
+            new ZCompressedFileSystem(),
+            new Bz2FileSystem(),
+            new XzFileSystem(),
+            szfs = new SevenZArchiveFileSystem()
+
+        );
+
         if(passwordsToTry != null && passwordsToTry.length > 0)
             szfs.tryPasswords(passwordsToTry);
 
-        return new Vfs(
-            new CopyZipFileSystem(),
-            szfs,
-            // new DecompressedFileSystem(new GzFileSystem()),
-            new GzFileSystem(),
-            new ZCompressedFileSystem(),
-            new Bz2FileSystem(),
-            new XzFileSystem()
-
-        );
-    }
-
-    public static void makeMd5File(final String md5FileToWrite, final String[] md5FilesToRead, final FileSpec[] directoriesToScan,
-        final String failedFile, final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered) throws IOException {
-        final Map<String, FileRecord> file2FileRecords =
-
-            readFileRecords(
-                Stream.concat(Stream.of(md5FileToWrite), Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0]))).toArray(String[]::new)
-
-            ).stream()
-                .collect(Collectors.toMap(fs -> fs.path, fs -> fs, (fr1, fr2) -> {
-                    if(fr1.equals(fr2))
-                        return fr1;
-                    throw new IllegalStateException("Duplicate keys for " + fr1 + " and " + fr2 + " that can't be merged.");
-                }));
-
-        final File md5File = new File(md5FileToWrite);
-        if(failedFile != null)
-            System.out.println("Writing errors to: " + failedFile);
-        try(PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile)))
-            : new PrintWriter(System.err);
-            PrintWriter md5os = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File)));) {
-
-            final long startTime = System.currentTimeMillis();
-            // pass to calc md5
-            recheck(() -> Arrays.stream(directoriesToScan).forEach(d -> uncheck(() -> {
-                doMd5(md5os, failed, d, file2FileRecords, deleteEmtyDirs, md5FileFilter, lineBuffered);
-            })));
-
-            System.out.println("Finished Clean: " + (System.currentTimeMillis() - startTime) + " millis");
-        }
+        return ret;
     }
 
     public static void usage() {
@@ -108,23 +107,58 @@ public class Md5File {
             System.out.println((c.enableLocalFileCaching ? "" : "NOT ") + "enabling local file caching.");
             LocalFileSystem.enableCaching(c.enableLocalFileCaching);
 
-            makeMd5File(c.md5FileToWrite, c.md5FilesToRead,
+            try(OpContext oc = vfs.operation();) {
+                makeMd5File(c.md5FileToWrite, c.md5FilesToRead,
 
-                Arrays.stream(c.directoriesToScan)
-                    .map(fr -> fr.uri())
-                    .map(u -> uncheck(() -> vfs.toPath(u)))
-                    .map(p -> new FileSpec(p))
-                    .toArray(FileSpec[]::new)
+                    c.directoriesToScan
 
-                , c.failedFile, c.deleteEmptyDirs, c.md5FileFilter(),
-                c.md5FileWriteLineBuffered);
+                    , c.failedFile, c.deleteEmptyDirs, c.md5FileFilter(),
+                    c.md5FileWriteLineBuffered, vfs);
+            }
+        }
+    }
+
+    public static void makeMd5File(final String md5FileToWrite, final String[] md5FilesToRead, final FileReference[] directoriesToScan,
+        final String failedFile, final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered, final Vfs vfs)
+        throws IOException {
+        final Map<String, FileRecord> file2FileRecords =
+
+            readFileRecords(
+                Stream.concat(Stream.of(md5FileToWrite), Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0]))).toArray(String[]::new)
+
+            ).stream()
+                .collect(Collectors.toMap(fs -> fs.path, fs -> fs, (fr1, fr2) -> {
+                    if(fr1.equals(fr2))
+                        return fr1;
+                    throw new IllegalStateException("Duplicate keys for " + fr1 + " and " + fr2 + " that can't be merged.");
+                }));
+
+        final File md5File = new File(md5FileToWrite);
+        if(failedFile != null)
+            System.out.println("Writing errors to: " + failedFile);
+        try(PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile)))
+            : new PrintWriter(System.err);
+            PrintWriter md5os = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File)));) {
+
+            final long startTime = System.currentTimeMillis();
+            // pass to calc md5
+            recheck(() -> Arrays.stream(directoriesToScan)
+                .map(fr -> fr.uri())
+                .forEach(uri -> uncheck(() -> {
+                    try(var sub = vfs.operation();) {
+                        final Path path = sub.toPath(uri);
+                        doMd5(md5os, failed, new FileSpec(path), file2FileRecords, deleteEmtyDirs, md5FileFilter, lineBuffered, sub);
+                    }
+                })));
+
+            System.out.println("Finished Clean: " + (System.currentTimeMillis() - startTime) + " millis");
         }
     }
 
     private static ObjectMapper om = JsonUtils.makeStandardObjectMapper();
 
     private static void doMd5(final PrintWriter md5os, final PrintWriter failed, final FileSpec fSpec, final Map<String, FileRecord> existing,
-        final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered) throws IOException {
+        final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered, final OpContext oc) throws IOException {
 
         final BasicFileAttributes attr = fSpec.getAttr();
         if(attr != null && attr.isSymbolicLink()) {
@@ -142,7 +176,7 @@ public class Md5File {
 
         if(!fSpec.isDirectory()) {
             if(attr == null || !attr.isOther()) {
-                final FileRecord existingFr = Optional.ofNullable(existing).map(e -> e.get(fSpec.uri().toString())).orElse(null);
+                final FileRecord existingFr = Optional.ofNullable(existing).map(e -> e.get(uncheck(() -> fSpec.uri()).toString())).orElse(null);
 
                 final FileRecord fr;
                 if(existingFr != null && existingFr.isComplete()) {
@@ -186,7 +220,7 @@ public class Md5File {
             // =========================================================================
             {
                 try {
-                    dirContents = fSpec.listSorted(vfs);
+                    dirContents = fSpec.listSorted(oc);
                 } catch(final IOException ze) {
                     if(!isArchiveOrCompressed)
                         throw ze;
@@ -209,7 +243,11 @@ public class Md5File {
                 try {
                     Functional.<IOException>recheck(
                         () -> Arrays.stream(dirContents)
-                            .forEach(f -> uncheck(() -> doMd5(md5os, failed, f, existing, deleteEmtyDirs, md5FileFilter, lineBuffered))));
+                            .forEach(f -> uncheck(() -> {
+                                try(OpContext subCtx = oc.sub();) {
+                                    doMd5(md5os, failed, f, existing, deleteEmtyDirs, md5FileFilter, lineBuffered, subCtx);
+                                }
+                            })));
                 } catch(final IOException ze) {
                     if(!isArchiveOrCompressed)
                         throw ze;
