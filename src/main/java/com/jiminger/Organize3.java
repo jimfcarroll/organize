@@ -255,12 +255,20 @@ public class Organize3 {
                 md5ToDirNode.put(k, newVal);
         });
 
+        final List<List<FileRecordNode>> toSort = new ArrayList<>();
         // now go through each md5 and rank them by the amount of duplication (or the
-        // number of bytes saved of collapsed)
+        // number of bytes saved if collapsed)
         md5ToDirNode.forEach((k, v) -> {
-
+            toSort.add(v);
         });
 
+        toSort.sort((l, r) -> rank(l) - rank(r));
+
         System.out.println();
+    }
+
+    public static int rank(final List<FileRecordNode> frns) {
+        final var first = frns.get(0);
+        return (int)(first.numBytes * (frns.size() - 1));
     }
 }
