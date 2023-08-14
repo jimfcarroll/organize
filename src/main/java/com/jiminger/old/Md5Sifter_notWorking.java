@@ -1,4 +1,4 @@
-package com.jiminger;
+package com.jiminger.old;
 
 import static net.dempsy.util.Functional.recheck;
 import static net.dempsy.util.Functional.uncheck;

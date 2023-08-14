@@ -1,8 +1,10 @@
-package com.jiminger;
+package com.jiminger.old;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.jiminger.Config;
 
 public class Md5Sifter {
 

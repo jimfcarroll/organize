@@ -1,6 +1,7 @@
 package com.jiminger;
 
 import static com.jiminger.FileRecord.readFileRecords;
+import static com.jiminger.VfsConfig.createVfs;
 import static net.dempsy.util.Functional.recheck;
 import static net.dempsy.util.Functional.uncheck;
 import static net.dempsy.util.HexStringUtil.bytesToHex;
@@ -24,67 +25,15 @@ import com.jiminger.Config.FileReference;
 
 import net.dempsy.serialization.jackson.JsonUtils;
 import net.dempsy.util.Functional;
-import net.dempsy.vfs.CopyingArchiveFileSystem;
 import net.dempsy.vfs.FileSpec;
 import net.dempsy.vfs.OpContext;
 import net.dempsy.vfs.Path;
-import net.dempsy.vfs.SevenZArchiveFileSystem;
 import net.dempsy.vfs.Vfs;
-import net.dempsy.vfs.ZCompressedFileSystem;
-import net.dempsy.vfs.bz.Bz2FileSystem;
-import net.dempsy.vfs.gz.GzFileSystem;
-import net.dempsy.vfs.local.LocalFileSystem;
-import net.dempsy.vfs.tar.TarFileSystem;
-import net.dempsy.vfs.xz.XzFileSystem;
-import net.dempsy.vfs.zip.ZipFileSystem;
-import net.sf.sevenzipjbinding.SevenZip;
 
 public class Md5File {
     // private static final Logger LOGGER = LoggerFactory.getLogger(Md5File.class);
 
     private static Vfs vfs;
-
-    private static Vfs getVfs(final String[] passwordsToTry) throws IOException {
-        // final var szfs = new SevenZArchiveFileSystem("sevenz", "rar", "tar", "tgz|gz", "tbz2|bz2", "txz|xz" /* , "zip" */);
-        // if(passwordsToTry != null && passwordsToTry.length > 0)
-        // szfs.tryPasswords(passwordsToTry);
-        //
-        // return new Vfs(
-        // new CopyZipFileSystem(),
-        // szfs,
-        // // new DecompressedFileSystem(new GzFileSystem()),
-        // new GzFileSystem(),
-        // new ZCompressedFileSystem(),
-        // new Bz2FileSystem(),
-        // new XzFileSystem()
-        //
-        // );
-
-        SevenZArchiveFileSystem szfs;
-
-        final var ret = new Vfs(
-            // szfs = new SevenZArchiveFileSystem("sevenz", "rar", "tar", "tgz|gz", "tbz2|bz2", "txz|xz", "zip"),
-            // new GzFileSystem(),
-            // new ZCompressedFileSystem(),
-            // new Bz2FileSystem()
-            //
-            // , new XzFileSystem()
-
-            new CopyingArchiveFileSystem(new TarFileSystem()),
-            new GzFileSystem(),
-            new CopyingArchiveFileSystem(new ZipFileSystem()),
-            new ZCompressedFileSystem(),
-            new Bz2FileSystem(),
-            new XzFileSystem(),
-            szfs = new SevenZArchiveFileSystem()
-
-        );
-
-        if(passwordsToTry != null && passwordsToTry.length > 0)
-            szfs.tryPasswords(passwordsToTry);
-
-        return ret;
-    }
 
     public static void usage() {
         System.err.println("Usage: java -cp [classpath] " + Md5File.class.getName() + " path/to/config.json");
@@ -92,20 +41,12 @@ public class Md5File {
 
     static public void main(final String[] args) throws Exception {
 
-        final String osArch = System.getProperty("os.arch");
-        System.out.println("OS Arch:" + osArch);
-        if("aarch64".equals(osArch))
-            SevenZip.initSevenZipFromPlatformJAR("Linux-arm64");
-
         if(args == null || args.length != 1)
             usage();
         else {
             final Config c = Config.load(args[0]);
-            vfs = getVfs(c.passwordsToTry);
-            System.out.println((c.avoidMemMap ? "" : "NOT ") + "avoiding memory mapping.");
-            MD5.avoidMemMap(c.avoidMemMap);
-            System.out.println((c.enableLocalFileCaching ? "" : "NOT ") + "enabling local file caching.");
-            LocalFileSystem.enableCaching(c.enableLocalFileCaching);
+            vfs = createVfs(c.passwordsToTry);
+            c.applyGlobalSettings();
 
             try(OpContext oc = vfs.operation();) {
                 makeMd5File(c.md5FileToWrite, c.md5FilesToRead,
@@ -113,13 +54,13 @@ public class Md5File {
                     c.directoriesToScan
 
                     , c.failedFile, c.deleteEmptyDirs, c.md5FileFilter(),
-                    c.md5FileWriteLineBuffered, vfs);
+                    c.md5FileWriteLineBuffered, vfs, c.recurseIntoArchives);
             }
         }
     }
 
-    public static void makeMd5File(final String md5FileToWrite, final String[] md5FilesToRead, final FileReference[] directoriesToScan,
-        final String failedFile, final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered, final Vfs vfs)
+    public static void makeMd5File(final String md5FileToWrite, final String[] md5FilesToRead, final FileReference[] directoriesToScan, final String failedFile,
+        final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered, final Vfs vfs, final boolean recurseIntoArchives)
         throws IOException {
         final Map<String, FileRecord> file2FileRecords =
 
@@ -127,7 +68,7 @@ public class Md5File {
                 Stream.concat(Stream.of(md5FileToWrite), Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0]))).toArray(String[]::new)
 
             ).stream()
-                .collect(Collectors.toMap(fs -> fs.path, fs -> fs, (fr1, fr2) -> {
+                .collect(Collectors.toMap(fs -> fs.path(), fs -> fs, (fr1, fr2) -> {
                     if(fr1.equals(fr2))
                         return fr1;
                     throw new IllegalStateException("Duplicate keys for " + fr1 + " and " + fr2 + " that can't be merged.");
@@ -147,7 +88,7 @@ public class Md5File {
                 .forEach(uri -> uncheck(() -> {
                     try(var sub = vfs.operation();) {
                         final Path path = sub.toPath(uri);
-                        doMd5(md5os, failed, new FileSpec(path), file2FileRecords, deleteEmtyDirs, md5FileFilter, lineBuffered, sub);
+                        doMd5(md5os, failed, new FileSpec(path), file2FileRecords, deleteEmtyDirs, md5FileFilter, lineBuffered, sub, recurseIntoArchives);
                     }
                 })));
 
@@ -158,7 +99,8 @@ public class Md5File {
     private static ObjectMapper om = JsonUtils.makeStandardObjectMapper();
 
     private static void doMd5(final PrintWriter md5os, final PrintWriter failed, final FileSpec fSpec, final Map<String, FileRecord> existing,
-        final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered, final OpContext oc) throws IOException {
+        final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered, final OpContext oc,
+        final boolean recurseIntoArchives) throws IOException {
 
         final BasicFileAttributes attr = fSpec.getAttr();
         if(attr != null && attr.isSymbolicLink()) {
@@ -181,13 +123,13 @@ public class Md5File {
                 final FileRecord fr;
                 if(existingFr != null && existingFr.isComplete()) {
                     System.out.println("COPYING : " + fSpec.uri());
-                    fSpec.setMime(existingFr.mime); // otherwise it will read the mime by opening a stream in order to determine if it's recursable
+                    fSpec.setMime(existingFr.mime()); // otherwise it will read the mime by opening a stream in order to determine if it's recursable
                     fr = existingFr;
                 } else {
                     System.out.println("SCANNING: " + fSpec.uri());
                     try(var header = fSpec.preserveHeader(1024 * 1024);) {
-                        final String md5 = (existingFr != null && existingFr.md5 != null) ? existingFr.md5 : bytesToHex(MD5.hash(fSpec));
-                        final String mime = (existingFr != null && existingFr.mime != null) ? existingFr.mime : fSpec.mimeType("UNKNOWN");
+                        final String md5 = (existingFr != null && existingFr.md5() != null) ? existingFr.md5() : bytesToHex(MD5.hash(fSpec));
+                        final String mime = (existingFr != null && existingFr.mime() != null) ? existingFr.mime() : fSpec.mimeType("UNKNOWN");
                         fr = new FileRecord(fSpec.uri().toString(), fSpec.size(), mime, fSpec.lastModifiedTime(), md5);
                     }
                 }
@@ -205,7 +147,7 @@ public class Md5File {
             }
         }
 
-        if(fSpec.isRecursable()) {
+        if((recurseIntoArchives && fSpec.isRecursable()) || (!recurseIntoArchives && fSpec.isDirectory())) {
 
             final boolean isArchiveOrCompressed = !fSpec.isDirectory(); // if it's recursable but NOT a directory, then it's an archive or it's compressed
 
@@ -245,7 +187,7 @@ public class Md5File {
                         () -> Arrays.stream(dirContents)
                             .forEach(f -> uncheck(() -> {
                                 try(OpContext subCtx = oc.sub();) {
-                                    doMd5(md5os, failed, f, existing, deleteEmtyDirs, md5FileFilter, lineBuffered, subCtx);
+                                    doMd5(md5os, failed, f, existing, deleteEmtyDirs, md5FileFilter, lineBuffered, subCtx, recurseIntoArchives);
                                 }
                             })));
                 } catch(final IOException ze) {

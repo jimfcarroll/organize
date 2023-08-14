@@ -56,13 +56,13 @@ public class MergeRecords {
             final Map<String, FileRecord> uniqueRecords = new HashMap<>(frs.size());
             int dupCount = 0;
             for(final FileRecord fr: frs) {
-                final FileRecord existing = uniqueRecords.get(fr.path);
+                final FileRecord existing = uniqueRecords.get(fr.path());
                 if(existing != null) {
                     if(!existing.equals(fr))
                         throw new IllegalStateException("Several FileRecords are duplicated but they differ. One is " + fr + " and the other is " + existing);
                     dupCount++;
                 } else {
-                    uniqueRecords.put(fr.path, fr);
+                    uniqueRecords.put(fr.path(), fr);
                     resulting.add(fr);
                 }
             }

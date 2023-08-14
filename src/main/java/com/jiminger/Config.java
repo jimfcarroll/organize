@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import net.dempsy.serialization.jackson.JsonUtils;
 import net.dempsy.vfs.FileSpec;
+import net.dempsy.vfs.local.LocalFileSystem;
 
 @JsonInclude(Include.NON_EMPTY)
 public class Config {
@@ -56,18 +57,22 @@ public class Config {
         }
     }
 
+    // RunCommandFile
+    public final boolean dryRun;
+
+    // Md5File, RunCommandFile
     public final boolean enableLocalFileCaching;
 
-    // Md5File, Organize, Md5Verify(only when deleting), MergeRecords
+    // Md5File, DirMerge, MergeRecords
     public final String md5FileToWrite;
 
-    // Md5File
+    // Md5File, DirMerge, RunCommandFile
     public final String[] passwordsToTry;
 
-    // Md5File, Md5Verify, Organize, Md5Sifter, MergeRecords
+    // Md5File, DirMerge, MergeRecords
     public final String[] md5FilesToRead;
 
-    // Md5File, Md5Verify
+    // Md5File
     public final FileReference[] directoriesToScan;
 
     // Md5File
@@ -76,59 +81,18 @@ public class Config {
     // Md5File
     public final boolean md5FileWriteLineBuffered;
 
-    // Md5File, Md5Verify, Organize
+    // Md5File
     public final String failedFile;
 
-    // Md5File, Organize
+    // Md5File
     public final String[] fileNameContains;
 
     // Dont use memory mapping of files for anything
-    // Md5File
+    // Md5File, RunCommandFile
     public final boolean avoidMemMap;
 
-    // public final String mountPoint;
-    // "/media/jim/Seagate Expansion Drive";
-    // public static final String mountPoint = "/media/jim/BigBackUp-4T-Damaged";
-    //
-    // // Md5Sifter, Execute
-    // public final String actionsFileName = null; // = "/tmp/actions.txt";
-    //
-    // // Md5Sifter
-    // public final String dirPrescedence = null; // = "/media/jim/Seagate Expansion Drive/dirPresedence.txt";
-
-    // // Md5Verify
-    // public final String verifyOutputFile = null; // = mountPoint + "/verify.txt";
-    //
-    // // Organize
-    // public final String srcDirectoryStr = null;// = "/home/jim/Landing";
-    // public final String dstDirectoryStr = null;// = "/media/jim/Seagate Expansion Drive/Family Media/Pictures/Scanned.bad";
-    // public final String dups = "DUPS";
-    // public final boolean appendOutfile = true;
-    // public final long byteBufferSize = 1024L * 1024L * 1024;
-    //
-    // // Organize, Md5Verify
-    // public final String outFile = "/tmp/out.txt";
-    //
-    // // Organize
-    // public final String[] filesToSkipAr = {"thumbs.db","thumbs.db:encryptable","recycler","zbthumbnail.info","zbthumbnail (2).info",
-    // "$recycle.bin","system volume information","desktop.ini","desktop (2).ini",".appledouble",".ds_store","digikam4.db",
-    // "thumbnails-digikam.db","sample pictures.lnk","itunes","album artwork","amazon mp3","podcasts","picasa.ini"
-    // };
-    // private Set<String> filesToSkipSet = null;
-    //
-    // public Config() {}
-    //
-    // public Predicate<File> organizeFilter = sourceFile -> {
-    // if(sourceFile.getName().startsWith(".") || filesToSkip().contains(sourceFile.getName().toLowerCase()))
-    // return false;
-    // else {
-    // for(final String fn: fileNameContains) {
-    // if(sourceFile.getAbsolutePath().toLowerCase().contains(fn))
-    // return false;
-    // }
-    // return true;
-    // }
-    // };
+    // Md5File
+    public final boolean recurseIntoArchives;
 
     public Predicate<FileSpec> md5FileFilter() {
         return sourceFile -> {
@@ -140,12 +104,12 @@ public class Config {
         };
     }
 
-    // private Set<String> filesToSkip() {
-    // if(filesToSkipSet == null) {
-    // filesToSkipSet = new HashSet<>(Arrays.stream(filesToSkipAr).collect(Collectors.toSet()));
-    // }
-    // return filesToSkipSet;
-    // }
+    public void applyGlobalSettings() {
+        System.out.println((avoidMemMap ? "" : "NOT ") + "avoiding memory mapping.");
+        MD5.avoidMemMap(avoidMemMap);
+        System.out.println((enableLocalFileCaching ? "" : "NOT ") + "enabling local file caching.");
+        LocalFileSystem.enableCaching(enableLocalFileCaching);
+    }
 
     private Config() {
         md5FileToWrite = null;
@@ -158,6 +122,8 @@ public class Config {
         avoidMemMap = false;
         enableLocalFileCaching = false;
         passwordsToTry = null;
+        recurseIntoArchives = true;
+        dryRun = false;
     }
 
 }

@@ -1,4 +1,4 @@
-package com.jiminger;
+package com.jiminger.old;
 
 public class Md5Verify {
 

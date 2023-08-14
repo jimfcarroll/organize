@@ -1,4 +1,4 @@
-package com.jiminger;
+package com.jiminger.old;
 
 import static com.jiminger.FileRecord.readFileRecords;
 import static net.dempsy.util.Functional.chain;
@@ -16,6 +16,10 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.jiminger.Config;
+import com.jiminger.FileRecord;
+import com.jiminger.Md5File;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +48,7 @@ public class Organize3 {
 
         public FileRecordNode(final FileRecord rec) {
             this.frecord = rec;
-            final String[] split = rec.path.split("/", -1);
+            final String[] split = rec.path().split("/", -1);
             final String scheme;
             if(split[0].endsWith(":")) {
                 // then there is no part of the path in the scheme.
@@ -147,8 +151,8 @@ public class Organize3 {
 
         public void finalizeTree() {
             if(!isDirectory) {
-                md5 = frecord.md5;
-                numBytes = frecord.size;
+                md5 = frecord.md5();
+                numBytes = frecord.size();
                 return;
             }
 
@@ -217,9 +221,9 @@ public class Organize3 {
                 .toArray(String[]::new)
 
         ).stream()
-            .filter(fr -> "file".equals(uncheck(() -> new URI(fr.path)).getScheme()))
+            .filter(fr -> "file".equals(uncheck(() -> new URI(fr.path())).getScheme()))
             // .peek(fr -> System.out.println(fr.path))
-            .collect(Collectors.toMap(fs -> fs.path, fs -> new FileRecordNode(fs), (fr1, fr2) -> {
+            .collect(Collectors.toMap(fs -> fs.path(), fs -> new FileRecordNode(fs), (fr1, fr2) -> {
                 if(fr1.equals(fr2))
                     return fr1;
                 throw new IllegalStateException("Duplicate keys for " + fr1 + " and " + fr2 + " that can't be merged.");
