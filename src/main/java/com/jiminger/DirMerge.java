@@ -1,13 +1,12 @@
 package com.jiminger;
 
 import static com.jiminger.FileRecord.readFileRecords;
-import static com.jiminger.VfsConfig.createVfs;
+import static com.jiminger.Utils.isParentUri;
 import static net.dempsy.util.Functional.uncheck;
 
 import java.io.File;
 import java.io.PrintStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -23,12 +22,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jiminger.commands.DeleteCommand;
 
 import net.dempsy.serialization.jackson.JsonUtils;
-import net.dempsy.util.UriUtils;
-import net.dempsy.vfs.Vfs;
 
 public class DirMerge {
 
-    private static Vfs vfs;
+//    private static Vfs vfs;
 
     private static final long KB = 1024;
     private static final long MEG = 1024 * KB;
@@ -70,7 +67,7 @@ public class DirMerge {
             usage();
 
         final Config conf = Config.load(args[0]);
-        vfs = createVfs(conf.passwordsToTry);
+//        vfs = createVfs(conf.passwordsToTry);
 
         final String commandFileStr = args[1];
         final PrintStream commandOs = new PrintStream(new File(commandFileStr));
@@ -104,7 +101,7 @@ public class DirMerge {
         final List<FileRecord> toMove = new ArrayList<>();
         final List<FileRecord> others = new ArrayList<>(file2FileRecords.size());
         for(final var cur: file2FileRecords.values()) {
-            if(isParentURI(uri, uncheck(() -> new URI(cur.path())))) {
+            if(isParentUri(uri, uncheck(() -> new URI(cur.path())))) {
                 toMove.add(cur);
             } else
                 others.add(cur);
@@ -187,48 +184,10 @@ public class DirMerge {
     public static List<FileRecord> childrenOf(final URI parentURI, final Collection<FileRecord> among) {
         final var ret = new ArrayList<FileRecord>();
         for(final var cur: among) {
-            if(isParentURI(parentURI, uncheck(() -> new URI(cur.path())))) {
+            if(isParentUri(parentURI, uncheck(() -> new URI(cur.path())))) {
                 ret.add(cur);
             }
         }
         return ret;
     }
-
-    public static boolean isParentURI(final URI parentURI, final URI childURI) {
-        try {
-            if(parentURI.getScheme().equals(childURI.getScheme())) {
-                URI cur = childURI;
-                if(childURI.toString().contains("media-nas")) {
-                    final int i = 10 + 12;
-                }
-                for(boolean done = false; !done;) {
-                    cur = getParent(cur);
-                    if(parentURI.equals(cur))
-                        return true;
-                    if(cur == null)
-                        done = true;
-                }
-            }
-
-            return false;
-        } catch(final Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    public static URI getParent(final URI uri) {
-        final String pathPart = uri.getPath();
-        if(pathPart == null)
-            return null;
-        final String newpath = UriUtils.getParent(pathPart);
-        if(newpath == null) // we're at the root
-            return null;
-        try {
-            return new URI(uri.getScheme(), uri.getAuthority(), newpath, uri.getQuery(), uri.getFragment());
-        } catch(final URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
 }

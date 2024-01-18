@@ -34,13 +34,19 @@
   
   <dependencies>
     <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-imaging</artifactId>
+      <version>1.0-alpha2</version>
+    </dependency>
+    <dependency>
       <groupId>ai.kognition.pilecv4j</groupId>
       <artifactId>lib-image</artifactId>
       <version>1.0.1-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>ai.kognition.pilecv4j</groupId>
-      <artifactId>native-image-linux-x86_64</artifactId>
+      <artifactId>native-image-${platform}</artifactId>
+      <classifier>bin</classifier>
       <version>1.0.1-SNAPSHOT</version>
     </dependency>
     <dependency>
@@ -88,6 +94,11 @@
       <groupId>org.tukaani</groupId>
       <artifactId>xz</artifactId>
       <version>1.8</version>
+    </dependency>
+    <dependency>
+      <groupId>com.drewnoakes</groupId>
+      <artifactId>metadata-extractor</artifactId>
+      <version>2.16.0</version>
     </dependency>
    </dependencies>
 
