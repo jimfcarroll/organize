@@ -31,3 +31,35 @@ def convert_pem_to_jks(pem_path, jks_path, jks_password):
 
 convert_pem_to_jks('path/to/certificate.pem', 'path/to/keystore.jks', 'your_jks_password')
 
+==========================================
+import zipfile
+
+# Replace 'your_zip_file.zip' with your zip file's name
+zip_file_name = 'your_zip_file.zip'
+
+with zipfile.ZipFile(zip_file_name, 'r') as zip:
+    # Iterate over each file in the zip file
+    for file_name in zip.namelist():
+        print(f"Reading {file_name}...")
+        with zip.open(file_name) as f:
+            # Reading each file line by line
+            for line in f:
+                print(line.decode().strip())  # Decoding from bytes to string and stripping newlines
+
+===========================================
+import zipfile
+
+def read_lines_from_zip(zip_file_name):
+    with zipfile.ZipFile(zip_file_name, 'r') as zip_file:
+        for file_name in zip_file.namelist():
+            # Open each file in the zip
+            with zip_file.open(file_name) as file:
+                # Read and yield each line
+                for line in file:
+                    yield line.decode().strip()
+
+# Usage example
+zip_file_name = 'your_zip_file.zip'
+for line in read_lines_from_zip(zip_file_name):
+    print(line)
+    # You can break or return if you want to stop after a certain condition
