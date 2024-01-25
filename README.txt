@@ -63,3 +63,44 @@ zip_file_name = 'your_zip_file.zip'
 for line in read_lines_from_zip(zip_file_name):
     print(line)
     # You can break or return if you want to stop after a certain condition
+===============================================
+
+import requests
+import zipfile
+import tempfile
+import os
+
+def download_jar(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        jar_file = os.path.join(tempfile.gettempdir(), 'downloaded.jar')
+        with open(jar_file, 'wb') as file:
+            file.write(response.content)
+        return jar_file
+    else:
+        raise Exception(f"Failed to download JAR file. Status code: {response.status_code}")
+
+def extract_zip_from_jar(jar_file, zip_file_name):
+    with zipfile.ZipFile(jar_file, 'r') as jar:
+        zip_file_path = os.path.join(tempfile.gettempdir(), zip_file_name)
+        jar.extract(zip_file_name, tempfile.gettempdir())
+        return zip_file_path
+
+# Example usage
+url = 'YOUR_MAVEN_REPOSITORY_URL'
+zip_file_name = 'YOUR_ZIP_FILE_NAME_INSIDE_JAR'
+
+try:
+    # Download JAR file
+    jar_file_path = download_jar(url)
+
+    # Extract ZIP file from JAR
+    zip_file_path = extract_zip_from_jar(jar_file_path, zip_file_name)
+
+    print(f"ZIP file extracted to: {zip_file_path}")
+
+    # Optionally, delete the JAR file if not needed
+    # os.remove(jar_file_path)
+
+except Exception as e:
+    print(str(e))
