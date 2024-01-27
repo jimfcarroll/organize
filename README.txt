@@ -121,3 +121,28 @@ def extract_directory_from_zip(zip_file_path, directory_to_extract, extract_to_p
 
 # Example usage
 # extract_directory_from_zip('path/to/zipfile.zip', 'directory_to_extract/', 'path/to/extract/to')
+
+==========================================
+
+import requests
+import zipfile
+import io
+import os
+
+def extract_directory_from_zip_from_url(zip_url, directory_to_extract, extract_to_path):
+    # Fetch the content from the URL
+    response = requests.get(zip_url)
+    response.raise_for_status()  # Ensure the request was successful
+
+    # Treat the fetched content as a file-like object
+    zip_file_like = io.BytesIO(response.content)
+
+    with zipfile.ZipFile(zip_file_like) as zip_ref:
+        for member in zip_ref.namelist():
+            # Check if the file is within the directory to extract
+            if member.startswith(directory_to_extract):
+                # Extract the file
+                zip_ref.extract(member, extract_to_path)
+
+# Example usage
+# extract_directory_from_zip_from_url('https://example.com/path/to/zipfile.zip', 'directory_to_extract/', 'path/to/extract/to')
