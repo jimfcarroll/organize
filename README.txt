@@ -104,3 +104,20 @@ try:
 
 except Exception as e:
     print(str(e))
+
+
+=========================================
+
+import zipfile
+import os
+
+def extract_directory_from_zip(zip_file_path, directory_to_extract, extract_to_path):
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        for member in zip_ref.namelist():
+            # Check if the file is within the directory to extract
+            if member.startswith(directory_to_extract):
+                # Extract the file
+                zip_ref.extract(member, extract_to_path)
+
+# Example usage
+# extract_directory_from_zip('path/to/zipfile.zip', 'directory_to_extract/', 'path/to/extract/to')
