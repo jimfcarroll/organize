@@ -246,3 +246,5 @@ with open(avro_schema_path, 'r') as f:
 
 # Convert to PySpark schema
 spark_schema = convert_avro_schema_to_spark_schema(avro_schema)
+
+https://open.spotify.com/track/7tEKdpbpU9UehECvFzqeW8?si=d6bca671151044ae
