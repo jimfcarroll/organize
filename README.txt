@@ -182,3 +182,67 @@ https://open.spotify.com/track/0k2A09ws6qg8HrMQ07uoMi
 
 
 https://open.spotify.com/track/6GItErJAg9nBPmiGK0shIj?si=c306195485b74b90
+
+
+import avro.schema
+from avro.datafile import DataFileWriter
+from avro.io import DatumWriter
+import io
+
+# Define your Avro schema
+schema = avro.schema.parse(open("your_schema.avsc", "rb").read())
+
+# Your data to be serialized; it should conform to the Avro schema
+data = [
+    {"field1": "value1", "field2": 123},  # Example record
+    # Add more records as needed
+]
+
+# Create an in-memory buffer
+buffer = io.BytesIO()
+
+# Use DataFileWriter to write the data and schema to the buffer
+with DataFileWriter(buffer, DatumWriter(), schema) as writer:
+    for record in data:
+        writer.append(record)
+
+# To read from the buffer later, you need to seek back to the start
+buffer.seek(0)
+
+# Now `buffer` contains your data in the standard Avro format, including the schema
+
+
+============================================
+
+from pyspark.sql.types import *
+import json
+
+def avro_type_to_spark_type(avro_type):
+    """Map Avro types to PySpark types."""
+    type_mappings = {
+        "string": StringType(),
+        "int": IntegerType(),
+        "long": LongType(),
+        "float": FloatType(),
+        "double": DoubleType(),
+        "boolean": BooleanType(),
+        # Add more mappings as needed
+    }
+    return type_mappings.get(avro_type, StringType())  # Default to StringType for unknown types
+
+def convert_avro_schema_to_spark_schema(avro_schema):
+    """Convert an Avro schema to a PySpark StructType schema."""
+    fields = []
+    for field in avro_schema['fields']:
+        # Handle complex types, arrays, and records recursively if necessary
+        spark_type = avro_type_to_spark_type(field['type'])
+        fields.append(StructField(field['name'], spark_type, True))
+    return StructType(fields)
+
+# Load your Avro schema (assuming JSON format)
+avro_schema_path = 'path/to/your/avro_schema.json'
+with open(avro_schema_path, 'r') as f:
+    avro_schema = json.load(f)
+
+# Convert to PySpark schema
+spark_schema = convert_avro_schema_to_spark_schema(avro_schema)
