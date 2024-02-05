@@ -254,3 +254,14 @@ https://open.spotify.com/track/0Gpp7RFAcV7DletYJ6KLIU?si=31e5b699105a4ac4
 https://open.spotify.com/track/3zBIvHUKXYWhgJNm7J4hNr?si=9a974ab1528d41e5
 
 https://open.spotify.com/track/1hT3eaGzrcFriQtgGdvsZv?si=ebe79f132b6b4906
+
+
+import os
+from datetime import datetime
+
+def create_version_suffix():
+    branch_name = os.environ.get('BRANCH_NAME', '')
+    if not branch_name.startswith('release'):
+        return '.dev' + datetime.utcnow().strftime('%Y%m%d%H%M%S')
+    return ''
+
