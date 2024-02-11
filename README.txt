@@ -305,3 +305,31 @@ stories:
   - intent: inquire_membership
   - action: utter_membership_details
 
+====================================================
+
+version: "2.0"
+intents:
+- ask_library_hours
+- search_book
+- inquire_membership
+
+entities:
+- book_name
+
+slots:
+  book_name:
+    type: text
+    influence_conversation: false
+
+responses:
+  utter_library_hours:
+  - text: "The library is open from 9 AM to 8 PM on weekdays and from 10 AM to 6 PM on weekends."
+  
+  utter_membership_details:
+  - text: "Membership allows you to borrow books, access exclusive online resources, and more. Visit our website or contact us for more information."
+
+actions:
+- utter_library_hours
+- utter_membership_details
+- action_search_book
+
