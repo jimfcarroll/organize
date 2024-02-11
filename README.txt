@@ -265,3 +265,25 @@ def create_version_suffix():
         return '.dev' + datetime.utcnow().strftime('%Y%m%d%H%M%S')
     return ''
 
+
+====================================
+
+nlu:
+- intent: ask_library_hours
+  examples: |
+    - What are your opening hours?
+    - When is the library open?
+    - Library timings?
+
+- intent: search_book
+  examples: |
+    - Do you have [The Great Gatsby](book_name)?
+    - I'm looking for a book named [1984](book_name).
+    - Is [Harry Potter](book_name) available?
+
+- intent: inquire_membership
+  examples: |
+    - How do I become a member?
+    - Membership details
+    - What are the benefits of membership?
+    
