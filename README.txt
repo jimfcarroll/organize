@@ -286,4 +286,22 @@ nlu:
     - How do I become a member?
     - Membership details
     - What are the benefits of membership?
-    
+
+===============================================
+
+stories:
+- story: library hours inquiry
+  steps:
+  - intent: ask_library_hours
+  - action: utter_library_hours
+
+- story: book search
+  steps:
+  - intent: search_book
+  - action: action_search_book
+
+- story: membership inquiry
+  steps:
+  - intent: inquire_membership
+  - action: utter_membership_details
+
