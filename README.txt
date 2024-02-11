@@ -388,3 +388,20 @@ rules:
   - action: utter_default
 
 
+==========================================
+
+curl -XPOST http://localhost:5055/webhook -H "Content-Type: application/json" -d '{
+    "next_action": "action_search_book",
+    "sender_id": "test_user",
+    "tracker": {
+        "slots": {
+            "book_name": "The Great Gatsby"
+        }
+    },
+    "domain": {
+        "entities": [],
+        "slots": {},
+        "responses": {}
+    }
+}'
+
