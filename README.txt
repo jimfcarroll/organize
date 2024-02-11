@@ -333,3 +333,26 @@ actions:
 - utter_membership_details
 - action_search_book
 
+=================================================================
+
+from typing import Any, Text, Dict, List
+from rasa_sdk import Action, Tracker
+from rasa_sdk.executor import CollectingDispatcher
+
+class ActionSearchBook(Action):
+
+    def name(self) -> Text:
+        return "action_search_book"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+
+        book_name = tracker.get_slot('book_name')  # Retrieve the book name from the slot
+
+        # Here you would add your logic to search for the book. For now, we'll just respond with a placeholder message.
+        message = f"Searching for '{book_name}'... (This is a placeholder response.)"
+
+        dispatcher.utter_message(text=message)
+
+        return []
