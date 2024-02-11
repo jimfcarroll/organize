@@ -356,3 +356,35 @@ class ActionSearchBook(Action):
         dispatcher.utter_message(text=message)
 
         return []
+
+===============================================
+
+version: "3.1"
+
+rules:
+
+# Rule for responding to library hours inquiry
+- rule: Respond to library hours inquiry
+  steps:
+  - intent: ask_library_hours
+  - action: utter_library_hours
+
+# Rule for initiating a book search
+- rule: Initiate book search
+  steps:
+  - intent: search_book
+  - action: action_search_book
+
+# Rule for providing membership details
+- rule: Provide membership details
+  steps:
+  - intent: inquire_membership
+  - action: utter_membership_details
+
+# Fallback rule for unrecognized input
+- rule: Fallback
+  steps:
+  - intent: nlu_fallback
+  - action: utter_default
+
+
