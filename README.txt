@@ -581,3 +581,35 @@ def cassandra_unit():
 def test_cassandra_operation(cassandra_unit):
     # Your test code here, using the Cassandra keyspace
     pass
+
+
+==========================================================================
+
+import subprocess
+import threading
+
+# Function to continuously read from a stream
+def read_stream(stream, display=True):
+    while True:
+        line = stream.readline()
+        if not line:
+            break
+        if display:
+            print(line.decode().strip())
+
+# Start the subprocess with stdout and stderr piped
+process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+# Create and start threads to read stdout and stderr
+stdout_thread = threading.Thread(target=read_stream, args=(process.stdout,))
+stderr_thread = threading.Thread(target=read_stream, args=(process.stderr, False))  # Set display=False if you don't want to print stderr
+
+stdout_thread.start()
+stderr_thread.start()
+
+# Wait for the threads to finish
+stdout_thread.join()
+stderr_thread.join()
+
+# Wait for the subprocess to finish if needed
+process.wait()
