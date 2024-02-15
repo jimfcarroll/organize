@@ -435,3 +435,57 @@ policies:
     max_history: 5
     epochs: 100
   - name: RulePolicy
+
+========================================
+
+def test_cassandra_connection():
+    from cassandra.cluster import Cluster
+    # Connect to the embedded Cassandra instance
+    cluster = Cluster(['127.0.0.1'], port=9042)  # Use the correct port
+    session = cluster.connect()
+    
+    # Your test code that interacts with Cassandra goes here
+    
+    # Clean up
+    session.shutdown()
+    cluster.shutdown()
+
+
+import socket
+import pytest
+import subprocess
+import time
+
+def is_port_open(host, port, timeout=2):
+    """Check if a port is open on a given host."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(timeout)
+        if sock.connect_ex((host, port)) == 0:
+            return True  # The port is open
+    return False  # The port is not open
+
+@pytest.fixture(scope="session", autouse=True)
+def start_embedded_cassandra():
+    jar_path = "path/to/your/cassandra-unit-jar.jar"
+    
+    # Start the embedded Cassandra as a subprocess
+    cassandra_process = subprocess.Popen(["java", "-jar", jar_path])
+    
+    # Wait for Cassandra's port to be open (polling)
+    host, port = "127.0.0.1", 9042  # Adjust the port if necessary
+    timeout = 120  # Total timeout in seconds to wait for Cassandra to start
+    start_time = time.time()
+    
+    while True:
+        if is_port_open(host, port):
+            break  # The port is open, Cassandra is ready
+        elif time.time() - start_time > timeout:
+            raise TimeoutError(f"Cassandra did not start within {timeout} seconds")
+        time.sleep(1)  # Wait a bit before trying again
+
+    yield  # Yield control back to the test function
+    
+    # Terminate the Cassandra process after the tests
+    cassandra_process.terminate()
+    cassandra_process.wait()
+
