@@ -530,3 +530,54 @@ def start_embedded_cassandra():
           </execution>
         </executions>
       </plugin>
+
+import pytest
+import subprocess
+import time
+import socket
+from cassandra.cluster import Cluster
+
+def wait_for_port(port, host='localhost', timeout=60.0):
+    """Wait until a port starts accepting TCP connections."""
+    start_time = time.time()
+    while True:
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                break
+        except OSError as ex:
+            time.sleep(0.01)
+            if time.time() - start_time >= timeout:
+                raise TimeoutError(f'Waited too long for the port {port} on {host} to start accepting connections.')
+
+@pytest.fixture(scope="session")
+def cassandra_unit():
+    # Define the startup command with all necessary Java VM arguments
+    jar_path = "path/to/your/cassandra-unit-jar.jar"  # Change this to the actual path of your JAR file
+    command = ["java", "-jar", jar_path, "additional", "arguments"]
+
+    # Start Cassandra unit
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    try:
+        # Wait for Cassandra to be ready (port 9142 by default)
+        wait_for_port(9142)
+
+        # Connect to Cassandra and create a keyspace
+        cluster = Cluster(['127.0.0.1'], port=9142)
+        session = cluster.connect()
+        session.execute("CREATE KEYSPACE IF NOT EXISTS test_keyspace WITH replication = {'class':'SimpleStrategy', 'replication_factor' : 3};")
+
+        yield  # Provide the fixture value
+
+    finally:
+        # Shutdown Cassandra unit after tests
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+
+# Example usage in a test
+def test_cassandra_operation(cassandra_unit):
+    # Your test code here, using the Cassandra keyspace
+    pass
