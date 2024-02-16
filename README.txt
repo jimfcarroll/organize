@@ -671,3 +671,35 @@ def other_thread(test_func):
             raise exceptions[0]  # Re-raise the first exception in the main thread
 
     return wrapper
+
+
+========================
+
+def wrapper(*args, **kwargs):
+    # Iterate through positional arguments in args
+    for arg in args:
+        if isinstance(arg, DesiredType):  # Check if arg is of the type you're looking for
+            # Do something with arg
+            print("Found in args:", arg)
+    
+    # Iterate through keyword arguments in kwargs
+    for key, value in kwargs.items():
+        if isinstance(value, DesiredType):  # Check if value is of the type you're looking for
+            # Do something with value
+            print(f"Found in kwargs under '{key}':", value)
+
+# Example usage
+class DesiredType:
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return f"DesiredType({self.name})"
+
+def my_function(*args, **kwargs):
+    wrapper(*args, **kwargs)
+
+obj1 = DesiredType("obj1")
+obj2 = DesiredType("obj2")
+
+my_function(obj1, not_target="hello", target=obj2)
