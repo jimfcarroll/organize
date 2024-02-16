@@ -613,3 +613,34 @@ stderr_thread.join()
 
 # Wait for the subprocess to finish if needed
 process.wait()
+
+=============
+
+import asyncio
+from threading import Thread
+import pytest
+from rasa.core.run import serve_application
+
+def run_rasa_server():
+    # Define the coroutine that runs the Rasa server
+    async def server_coroutine():
+        # The serve_application function starts the Rasa server. Adjust the parameters as needed.
+        # Note: `model` should point to the directory containing your trained model.
+        await serve_application(model="path/to/your/model")
+
+    # Run the server coroutine in the current event loop
+    asyncio.run(server_coroutine())
+
+@pytest.fixture(scope="session")
+def rasa_server():
+    # Start the Rasa server in a background thread
+    thread = Thread(target=run_rasa_server)
+    thread.daemon = True  # Daemon threads are terminated when the main program exits
+    thread.start()
+
+    # Wait a bit for the server to start up (consider a more reliable check here)
+    time.sleep(10)  # Adjust the sleep time as needed
+
+    yield  # This allows the tests to run while the server is up
+
+    # The server will automatically stop when the pytest session ends, as the thread is a daemon
