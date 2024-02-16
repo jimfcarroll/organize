@@ -644,3 +644,30 @@ def rasa_server():
     yield  # This allows the tests to run while the server is up
 
     # The server will automatically stop when the pytest session ends, as the thread is a daemon
+
+============
+
+import threading
+import functools
+import pytest
+
+def other_thread(test_func):
+    @functools.wraps(test_func)
+    def wrapper(*args, **kwargs):
+        # Container for exceptions
+        exceptions = []
+
+        def run():
+            try:
+                test_func(*args, **kwargs)
+            except Exception as e:
+                exceptions.append(e)
+
+        t = threading.Thread(target=run)
+        t.start()
+        t.join()
+
+        if exceptions:
+            raise exceptions[0]  # Re-raise the first exception in the main thread
+
+    return wrapper
