@@ -751,3 +751,42 @@ try:
     print(snapshot_url)
 except Exception as e:
     print(e)
+
+=========================
+
+import os
+import requests
+
+def fetchJarFromMaven(location_to_download_to, maven_repo_url, groupId, artifactId, version, classifier=None):
+    # Construct the URL for the JAR file
+    group_path = groupId.replace('.', '/')
+    classifier_part = f"-{classifier}" if classifier else ""
+    jar_url = f"{maven_repo_url}/{group_path}/{artifactId}/{version}/{artifactId}-{version}{classifier_part}.jar"
+
+    # Make the request to download the JAR
+    response = requests.get(jar_url, stream=True)
+    if response.status_code == 200:
+        # Ensure the download directory exists
+        os.makedirs(location_to_download_to, exist_ok=True)
+
+        # Construct the full path for the downloaded file
+        filename = f"{artifactId}-{version}{classifier_part}.jar"
+        file_path = os.path.join(location_to_download_to, filename)
+
+        # Write the JAR file to the specified location
+        with open(file_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=128):
+                f.write(chunk)
+
+        print(f"Downloaded: {file_path}")
+    else:
+        print(f"Failed to download JAR from {jar_url}. HTTP status code: {response.status_code}")
+
+# Example usage
+fetchJarFromMaven(
+    location_to_download_to='/path/to/download',
+    maven_repo_url='https://repo1.maven.org/maven2',
+    groupId='org.apache.commons',
+    artifactId='commons-lang3',
+    version='3.12.0'
+)
