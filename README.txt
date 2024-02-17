@@ -832,3 +832,29 @@ def test_action_search_book():
     # with the appropriate payload and then check the response
 
     # Don't forget to include logic to stop the server or ensure it stops when the test completes
+
+===============
+
+#!/bin/bash
+
+# Find all test files
+test_files=$(find . -name 'test_*.py')
+
+# Initialize a flag to track the first iteration
+first_run=true
+
+# Loop through all test files
+for file in $test_files; do
+    if [ "$first_run" = true ]; then
+        # Run pytest without --cov-append for the first test file
+        pytest --cov=your_package_name --cov-report= $file
+        first_run=false
+    else
+        # Run pytest with --cov-append for subsequent test files
+        pytest --cov=your_package_name --cov-report= --cov-append $file
+    fi
+done
+
+# After running all tests, generate the final aggregated coverage report in XML format
+coverage xml -o coverage_report.xml
+
