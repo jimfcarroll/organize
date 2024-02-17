@@ -703,3 +703,51 @@ obj1 = DesiredType("obj1")
 obj2 = DesiredType("obj2")
 
 my_function(obj1, not_target="hello", target=obj2)
+
+======================
+
+import requests
+import xml.etree.ElementTree as ET
+
+def getSnapshotUrl(maven_snapshot_repo_url, groupId, artifactId, version, classifier=None):
+    # Replace dots and colons in groupId and version to construct the metadata URL
+    metadata_url = f"{maven_snapshot_repo_url}/{groupId.replace('.', '/')}/{artifactId}/{version}/maven-metadata.xml"
+
+    # Fetch the metadata XML
+    response = requests.get(metadata_url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to fetch maven metadata from {metadata_url}")
+
+    # Parse the XML
+    metadata_xml = ET.fromstring(response.content)
+
+    # Find the latest snapshot version
+    versioning = metadata_xml.find('versioning')
+    snapshot = versioning.find('snapshot')
+    timestamp = snapshot.find('timestamp').text
+    buildNumber = snapshot.find('buildNumber').text
+
+    # Construct the artifact filename
+    snapshotVersion = version.replace("-SNAPSHOT", f"-{timestamp}-{buildNumber}")
+    if classifier:
+        artifact_filename = f"{artifactId}-{snapshotVersion}-{classifier}.jar"
+    else:
+        artifact_filename = f"{artifactId}-{snapshotVersion}.jar"
+
+    # Construct the snapshot URL
+    snapshot_url = f"{maven_snapshot_repo_url}/{groupId.replace('.', '/')}/{artifactId}/{version}/{artifact_filename}"
+
+    return snapshot_url
+
+# Example usage
+maven_snapshot_repo_url = "https://your.maven.repo.url/repository/snapshots"
+groupId = "com.example"
+artifactId = "your-artifact"
+version = "1.0-SNAPSHOT"
+classifier = "jar-with-dependencies"  # Optional, can be None
+
+try:
+    snapshot_url = getSnapshotUrl(maven_snapshot_repo_url, groupId, artifactId, version, classifier)
+    print(snapshot_url)
+except Exception as e:
+    print(e)
