@@ -790,3 +790,45 @@ fetchJarFromMaven(
     artifactId='commons-lang3',
     version='3.12.0'
 )
+
+===========================================
+
+import threading
+from rasa_sdk.executor import ActionExecutor
+from rasa_sdk.endpoint import endpoint_app
+from rasa_sdk.interfaces import Action
+from sanic import Sanic
+
+# Assuming ActionSearchBook is defined elsewhere
+from your_action_file import ActionSearchBook
+
+def start_action_server():
+    # Load your custom actions
+    executor = ActionExecutor()
+    executor.register_package(ActionSearchBook)
+    
+    # Create a Sanic app with the registered actions
+    app = endpoint_app(cors_origins="*", action_executor=executor)
+    
+    # Start the Sanic server on a separate thread
+    app.run(host="0.0.0.0", port=5055, access_log=False)
+
+# Function to run the action server in a separate thread
+def run_server_in_thread():
+    thread = threading.Thread(target=start_action_server)
+    thread.daemon = True  # Allows the server to shut down when the main thread exits
+    thread.start()
+    
+    # Wait a bit for the server to start up (optional, depending on your setup)
+    time.sleep(2)
+
+# Your test function
+def test_action_search_book():
+    # Start the action server
+    run_server_in_thread()
+    
+    # Here you would add your code to interact with the action server
+    # For example, you might send a POST request to 'http://localhost:5055/webhook'
+    # with the appropriate payload and then check the response
+
+    # Don't forget to include logic to stop the server or ensure it stops when the test completes
