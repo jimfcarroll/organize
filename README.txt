@@ -880,3 +880,17 @@ url = "YOUR_FILE_URL_HERE"
 local_filename = url.split('/')[-1]  # Use the last part of the URL as the file name
 download_file(url, local_filename)
 
+import yaml
+
+def read_yaml_to_dict(filename):
+    with open(filename, 'r') as stream:
+        try:
+            return yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+            return None
+
+# Example usage
+yaml_file = 'your_yaml_file.yaml'  # Replace with your YAML file path
+yaml_dict = read_yaml_to_dict(yaml_file)
+print(yaml_dict)
