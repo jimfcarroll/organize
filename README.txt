@@ -858,3 +858,25 @@ done
 # After running all tests, generate the final aggregated coverage report in XML format
 coverage xml -o coverage_report.xml
 
+================================
+
+import requests
+
+def download_file(url, local_filename):
+    # Send a GET request to the URL
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()  # Check for errors
+        
+        # Open a local file with write-binary mode
+        with open(local_filename, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192): 
+                # If you have chunk encoded response uncomment if
+                # and set chunk_size parameter to None.
+                #if chunk: 
+                f.write(chunk)
+
+# Example usage
+url = "YOUR_FILE_URL_HERE"
+local_filename = url.split('/')[-1]  # Use the last part of the URL as the file name
+download_file(url, local_filename)
+
