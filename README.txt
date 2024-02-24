@@ -894,3 +894,49 @@ def read_yaml_to_dict(filename):
 yaml_file = 'your_yaml_file.yaml'  # Replace with your YAML file path
 yaml_dict = read_yaml_to_dict(yaml_file)
 print(yaml_dict)
+
+==========
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+
+public class FileDownloader {
+
+    /**
+     * Downloads a file from a given URL to a specified destination directory.
+     *
+     * @param fileURL         The URL of the file to download.
+     * @param destinationDir  The directory where the file will be saved.
+     * @throws IOException if an I/O error occurs.
+     */
+    public static void downloadFile(String fileURL, String destinationDir) throws IOException {
+        // Extract the file name from the URL
+        String fileName = fileURL.substring(fileURL.lastIndexOf('/') + 1);
+
+        // Create a Path object for the destination directory and resolve the filename within it
+        Path destinationPath = Paths.get(destinationDir).resolve(fileName);
+
+        // Open a stream from the URL
+        try (InputStream in = new URL(fileURL).openStream()) {
+            // Copy the file from the stream to the destination path
+            Files.copy(in, destinationPath, StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("File downloaded to: " + destinationPath);
+        }
+    }
+
+    public static void main(String[] args) {
+        String fileURL = "https://example.com/path/to/your/file.txt"; // Replace with the actual file URL
+        String destinationDir = "path/to/destination/directory"; // Replace with the actual destination directory
+
+        try {
+            downloadFile(fileURL, destinationDir);
+        } catch (IOException e) {
+            System.err.println("An error occurred during file download: " + e.getMessage());
+        }
+    }
+}
