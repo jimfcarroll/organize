@@ -940,3 +940,52 @@ public class FileDownloader {
         }
     }
 }
+
+=========================
+
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+public class TarGzExtractor {
+
+    public static void extractTarGz(File tarGzFile, Path destination) throws IOException {
+        try (FileInputStream fis = new FileInputStream(tarGzFile);
+             BufferedInputStream bis = new BufferedInputStream(fis);
+             GzipCompressorInputStream gis = new GzipCompressorInputStream(bis);
+             TarArchiveInputStream tarInput = new TarArchiveInputStream(gis)) {
+
+            TarArchiveEntry entry;
+            while ((entry = (TarArchiveEntry) tarInput.getNextEntry()) != null) {
+                Path outputPath = destination.resolve(entry.getName());
+                if (entry.isDirectory()) {
+                    Files.createDirectories(outputPath);
+                } else {
+                    Files.createDirectories(outputPath.getParent());
+                    try (FileOutputStream fos = new FileOutputStream(outputPath.toFile())) {
+                        tarInput.transferTo(fos);
+                    }
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        File tarGzFile = new File("path/to/your/file.tar.gz"); // Replace with your tar.gz file path
+        Path destination = Path.of("path/to/extract/contents"); // Replace with your destination directory path
+
+        try {
+            extractTarGz(tarGzFile, destination);
+            System.out.println("Extraction completed.");
+        } catch (IOException e) {
+            System.err.println("Error occurred during extraction: " + e.getMessage());
+        }
+    }
+}
