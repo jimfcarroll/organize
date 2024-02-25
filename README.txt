@@ -989,3 +989,50 @@ public class TarGzExtractor {
         }
     }
 }
+
+=============
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+
+public class PortListenerWaiter {
+
+    public static boolean waitForPort(String host, int port, int timeoutMillis) {
+        long deadline = System.currentTimeMillis() + timeoutMillis;
+        IOException lastException = null;
+
+        while (System.currentTimeMillis() < deadline) {
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(host, port), 1000); // Attempt to connect with a 1-second timeout
+                return true; // Connection successful, the process is listening on the port
+            } catch (IOException e) {
+                lastException = e; // Remember the last exception for potential debugging
+                try {
+                    Thread.sleep(1000); // Wait for a second before retrying
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt(); // Preserve interrupt status
+                    return false; // Interrupted, exit the loop
+                }
+            }
+        }
+
+        // Timeout period elapsed, log or handle the last exception if needed
+        if (lastException != null) {
+            System.err.println("Failed to connect to " + host + ":" + port + " within " + timeoutMillis + " ms. Last exception: " + lastException.getMessage());
+        }
+        return false; // Timeout reached without successful connection
+    }
+
+    public static void main(String[] args) {
+        String host = "127.0.0.1";
+        int port = 8080;
+        int timeoutMillis = 30000; // 30 seconds
+
+        if (waitForPort(host, port, timeoutMillis)) {
+            System.out.println("Process is now listening on port " + port);
+        } else {
+            System.out.println("Timed out waiting for a process to listen on port " + port);
+        }
+    }
+}
