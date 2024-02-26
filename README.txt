@@ -1036,3 +1036,38 @@ public class PortListenerWaiter {
         }
     }
 }
+
+============
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.HashSet;
+import java.util.Set;
+
+public class FileModeSetter {
+
+    public static void setFilePermissions(File file, int mode) throws IOException {
+        Set<PosixFilePermission> perms = new HashSet<>();
+
+        // Owner permissions
+        if ((mode & 0400) > 0) perms.add(PosixFilePermission.OWNER_READ);
+        if ((mode & 0200) > 0) perms.add(PosixFilePermission.OWNER_WRITE);
+        if ((mode & 0100) > 0) perms.add(PosixFilePermission.OWNER_EXECUTE);
+
+        // Group permissions
+        if ((mode & 0040) > 0) perms.add(PosixFilePermission.GROUP_READ);
+        if ((mode & 0020) > 0) perms.add(PosixFilePermission.GROUP_WRITE);
+        if ((mode & 0010) > 0) perms.add(PosixFilePermission.GROUP_EXECUTE);
+
+        // Others permissions
+        if ((mode & 0004) > 0) perms.add(PosixFilePermission.OTHERS_READ);
+        if ((mode & 0002) > 0) perms.add(PosixFilePermission.OTHERS_WRITE);
+        if ((mode & 0001) > 0) perms.add(PosixFilePermission.OTHERS_EXECUTE);
+
+        // Apply the permissions
+        Files.setPosixFilePermissions(file.toPath(), perms);
+    }
+}
