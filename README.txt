@@ -1071,3 +1071,52 @@ public class FileModeSetter {
         Files.setPosixFilePermissions(file.toPath(), perms);
     }
 }
+
+============
+
+
+import org.eclipse.jetty.util.component.AbstractLifeCycle;
+import org.gaul.s3proxy.S3Proxy;
+import org.jclouds.blobstore.BlobStoreContext;
+
+public class S3ProxyTestSetup {
+
+    private S3Proxy s3Proxy;
+    private BlobStoreContext context;
+    private String endpoint;
+
+    @Before
+    public void setUp() throws Exception {
+        Properties properties = new Properties();
+        properties.setProperty("s3proxy.authorization", "none");
+        properties.setProperty("s3proxy.endpoint", "http://127.0.0.1:0"); // Use 0 for random port
+        properties.setProperty("jclouds.provider", "filesystem");
+        properties.setProperty("jclouds.filesystem.basedir", "/path/to/your/target/subdirectory");
+
+        context = ContextBuilder.newBuilder("filesystem")
+                .overrides(properties)
+                .buildView(BlobStoreContext.class);
+        
+        s3Proxy = S3Proxy.builder()
+                .blobStore(context.getBlobStore())
+                .endpoint(URI.create(properties.getProperty("s3proxy.endpoint")))
+                .build();
+        s3Proxy.start();
+        while (!s3Proxy.getState().equals(AbstractLifeCycle.STARTED)) {
+            Thread.sleep(10); // wait for the server to start
+        }
+
+        endpoint = s3Proxy.getUri().toString();
+        // Configure your application to use `endpoint` as the S3 endpoint
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        if (s3Proxy != null) {
+            s3Proxy.stop();
+        }
+        if (context != null) {
+            context.close();
+        }
+    }
+}
