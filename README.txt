@@ -1120,3 +1120,30 @@ public class S3ProxyTestSetup {
         }
     }
 }
+
+==================
+
+PropertyFilter ignoreFieldsFilter = new SimpleBeanPropertyFilter() {
+    @Override
+    public void serializeAsField(Object pojo, JsonGenerator jgen, SerializerProvider provider, PropertyWriter writer) throws Exception {
+        if (fieldsToIgnore.contains(writer.getName())) {
+            // Skip this field
+        } else {
+            // Serialize as normal
+            writer.serializeAsField(pojo, jgen, provider);
+        }
+    }
+};
+
+ObjectMapper mapper = new ObjectMapper();
+FilterProvider filters = new SimpleFilterProvider().addFilter("ignoreFieldsFilter", ignoreFieldsFilter);
+mapper.setFilterProvider(filters);
+
+// Important: Enable the filter for all classes
+mapper.setAnnotationIntrospector(new JacksonAnnotationIntrospector() {
+    @Override
+    public Object findFilterId(Annotated a) {
+        return "ignoreFieldsFilter"; // Return the ID of the filter to apply
+    }
+});
+
