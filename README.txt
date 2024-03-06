@@ -1234,3 +1234,18 @@ with io.BytesIO() as file_stream:
     
     # Upload the stream directly to the new S3 object
     s3_client.upload_fileobj(file_stream, Bucket=destination_bucket, Key=destination_key)
+
+==========================
+
+def stream_s3_object_to_file(bucket_name, object_key, local_file_path):
+    """Stream an S3 object line by line to a local file."""
+    with open(local_file_path, 'w') as out_file:
+        # Get the S3 object
+        s3_object = s3.get_object(Bucket=bucket_name, Key=object_key)
+        # Ensure streaming by accessing the Body
+        for line in s3_object['Body'].iter_lines():
+            # Decode binary to string and process the line
+            processed_line = process_line(line.decode('utf-8'))
+            # Write the processed line to the output file
+            out_file.write(processed_line + '\n')
+
