@@ -1147,3 +1147,58 @@ mapper.setAnnotationIntrospector(new JacksonAnnotationIntrospector() {
     }
 });
 
+======================
+
+import boto3
+
+# Initialize a boto3 client
+s3_client = boto3.client('s3')
+
+# Source S3 object details
+source_bucket = 'your-source-bucket'
+source_key = 'your-source-object-key'
+
+# Destination S3 object details
+destination_bucket = 'your-destination-bucket'
+destination_key = 'your-destination-object-key'
+
+# Start a multipart upload session
+multipart_upload = s3_client.create_multipart_upload(Bucket=destination_bucket, Key=destination_key)
+parts = []
+
+# Get the source object
+source_object = s3_client.get_object(Bucket=source_bucket, Key=source_key)
+
+part_number = 1
+# The buffer to hold data for each part
+buffer = io.BytesIO()
+
+# Process the source object line by line
+for line in source_object['Body'].iter_lines():
+    # Process the line (example: converting to uppercase)
+    processed_line = line.decode('utf-8').upper() + '\n'
+    # Write the processed line to the buffer
+    buffer.write(processed_line.encode('utf-8'))
+
+    # If buffer size exceeds a certain threshold, upload the part
+    if buffer.tell() > 5 * 1024 * 1024:  # For example, 5MB
+        buffer.seek(0)
+        # Upload part
+        part = s3_client.upload_part(Bucket=destination_bucket, Key=destination_key, 
+                                     PartNumber=part_number, UploadId=multipart_upload['UploadId'], 
+                                     Body=buffer)
+        parts.append({"PartNumber": part_number, "ETag": part['ETag']})
+        part_number += 1
+        buffer = io.BytesIO()  # Reset buffer
+
+# Upload any remaining part in buffer
+if buffer.tell() > 0:
+    buffer.seek(0)
+    part = s3_client.upload_part(Bucket=destination_bucket, Key=destination_key,
+                                 PartNumber=part_number, UploadId=multipart_upload['UploadId'],
+                                 Body=buffer)
+    parts.append({"PartNumber": part_number, "ETag": part['ETag']})
+
+# Complete multipart upload
+s3_client.complete_multipart_upload(Bucket=destination_bucket, Key=destination_key, 
+                                    UploadId=multipart_upload['UploadId'], MultipartUpload={"Parts": parts})
