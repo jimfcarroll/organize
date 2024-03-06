@@ -1202,3 +1202,35 @@ if buffer.tell() > 0:
 # Complete multipart upload
 s3_client.complete_multipart_upload(Bucket=destination_bucket, Key=destination_key, 
                                     UploadId=multipart_upload['UploadId'], MultipartUpload={"Parts": parts})
+
+==================
+
+import boto3
+import io
+
+# Initialize a boto3 client
+s3_client = boto3.client('s3')
+
+# Specify your source and destination details
+source_bucket = 'your-source-bucket'
+source_key = 'your-source-object-key'
+destination_bucket = 'your-destination-bucket'
+destination_key = 'your-destination-object-key'
+
+# Get the source object
+source_object = s3_client.get_object(Bucket=source_bucket, Key=source_key)
+
+# Use a BytesIO stream as an intermediary to write processed lines
+with io.BytesIO() as file_stream:
+    # Process the source object line by line
+    for line in source_object['Body'].iter_lines():
+        # Convert bytes to string and process the line
+        processed_line = line.decode('utf-8').upper() + '\n'  # Example processing
+        # Write the processed line to the BytesIO stream
+        file_stream.write(processed_line.encode('utf-8'))
+    
+    # After processing all lines, seek back to the beginning of the BytesIO stream
+    file_stream.seek(0)
+    
+    # Upload the stream directly to the new S3 object
+    s3_client.upload_fileobj(file_stream, Bucket=destination_bucket, Key=destination_key)
