@@ -1249,3 +1249,49 @@ def stream_s3_object_to_file(bucket_name, object_key, local_file_path):
             # Write the processed line to the output file
             out_file.write(processed_line + '\n')
 
+
+=====================
+
+import requests
+from xml.etree import ElementTree
+
+def download_jar_from_maven(repo_url, group_id, artifact_id, version, classifier=None):
+    # Convert group_id to URL path format
+    group_url = group_id.replace('.', '/')
+    base_url = f"{repo_url}/{group_url}/{artifact_id}/{version}"
+    
+    if "SNAPSHOT" in version:
+        # Fetch maven-metadata.xml to get the specific snapshot version
+        metadata_url = f"{base_url}/maven-metadata.xml"
+        response = requests.get(metadata_url)
+        if response.status_code == 200:
+            xml_root = ElementTree.fromstring(response.content)
+            timestamp = xml_root.find(".//timestamp").text
+            buildNumber = xml_root.find(".//buildNumber").text
+            # Replace SNAPSHOT in version with actual snapshot version
+            specific_version = version.replace("SNAPSHOT", f"{timestamp}-{buildNumber}")
+        else:
+            print("Failed to fetch maven-metadata.xml")
+            return
+    else:
+        specific_version = version
+    
+    jar_filename = f"{artifact_id}-{specific_version}"
+    if classifier:
+        jar_filename += f"-{classifier}"
+    jar_filename += ".jar"
+    
+    jar_url = f"{base_url}/{jar_filename}"
+    
+    # Download the JAR file
+    print(f"Downloading {jar_url}")
+    response = requests.get(jar_url)
+    if response.status_code == 200:
+        with open(jar_filename, 'wb') as f:
+            f.write(response.content)
+        print(f"Downloaded {jar_filename}")
+    else:
+        print(f"Failed to download {jar_url}")
+
+# Example usage
+# download_jar_from_maven('https://repo1.maven.org/maven2', 'com.example', 'my-artifact', '1.0-SNAPSHOT')
