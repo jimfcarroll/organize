@@ -1295,3 +1295,5 @@ def download_jar_from_maven(repo_url, group_id, artifact_id, version, classifier
 
 # Example usage
 # download_jar_from_maven('https://repo1.maven.org/maven2', 'com.example', 'my-artifact', '1.0-SNAPSHOT')
+
+https://www.youtube.com/watch?v=7QwUCR1NHpg
