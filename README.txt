@@ -1299,3 +1299,54 @@ def download_jar_from_maven(repo_url, group_id, artifact_id, version, classifier
 https://www.youtube.com/watch?v=7QwUCR1NHpg
 
 f#hPB1yZxooOG9hmW!1XeacUmAuKA7
+
+=================================================
+
+public class CustomValidationException extends RuntimeException {
+    private final String fieldName;
+    private final Object rejectedValue;
+    private final String message;
+
+    public CustomValidationException(String fieldName, Object rejectedValue, String message) {
+        super(message);
+        this.fieldName = fieldName;
+        this.rejectedValue = rejectedValue;
+        this.message = message;
+    }
+
+    // Getters
+    public String getFieldName() {
+        return fieldName;
+    }
+
+    public Object getRejectedValue() {
+        return rejectedValue;
+    }
+
+    @Override
+    public String getMessage() {
+        return message;
+    }
+}
+
+
+@ControllerAdvice
+public class CustomExceptionHandler {
+
+    @ExceptionHandler(CustomValidationException.class)
+    public ResponseEntity<Object> handleCustomValidationException(CustomValidationException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Bad Request");
+        body.put("message", "Validation failed for object='yourObject'. Error count: 1");
+        body.put("errors", List.of(Map.of(
+                "field", ex.getFieldName(),
+                "rejectedValue", ex.getRejectedValue(),
+                "message", ex.getMessage()
+        )));
+
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+}
+
