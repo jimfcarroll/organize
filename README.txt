@@ -1350,3 +1350,49 @@ public class CustomExceptionHandler {
     }
 }
 
+
+import socket
+import time
+import subprocess
+
+class MyProxyClass:
+    def __init__(self, shutdown_port):
+        self.shutdown_port = shutdown_port
+        # Example initialization, adapt this to your actual start method
+        self.process = subprocess.Popen(['your_proxy_command', 'args'])
+
+    def close(self, wait_timeout=5):
+        """
+        Shuts down the proxy by connecting to a shutdown port,
+        waits for the process to exit, and forcefully terminates if necessary.
+
+        :param wait_timeout: Time in seconds to wait for the process to exit after each operation
+        """
+        try:
+            # Connect to the shutdown port, which triggers shutdown
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.connect(('localhost', self.shutdown_port))
+        except Exception as e:
+            print(f"Error connecting to shutdown port: {e}")
+
+        # Wait for the process to exit
+        try:
+            self.process.wait(timeout=wait_timeout)
+        except subprocess.TimeoutExpired:
+            # If the process does not exit, terminate it
+            print("Process did not exit, terminating now...")
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=wait_timeout)
+            except subprocess.TimeoutExpired:
+                # If the process still does not exit, kill it
+                print("Process still running, killing now...")
+                self.process.kill()
+                self.process.wait()  # Ensure it's really killed
+                print("Process killed.")
+
+# Example usage:
+if __name__ == "__main__":
+    proxy = MyProxyClass(shutdown_port=12345)
+    proxy.close()
+
