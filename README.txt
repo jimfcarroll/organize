@@ -1397,3 +1397,5 @@ if __name__ == "__main__":
     proxy.close()
 
 https://chatgpt.com/share/ae5cde7f-0faf-48be-a904-8d9f3104aad8
+
+https://www.youtube.com/watch?v=-2dLRGocWPs
