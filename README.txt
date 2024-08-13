@@ -1396,3 +1396,4 @@ if __name__ == "__main__":
     proxy = MyProxyClass(shutdown_port=12345)
     proxy.close()
 
+https://chatgpt.com/share/ae5cde7f-0faf-48be-a904-8d9f3104aad8
