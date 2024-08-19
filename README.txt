@@ -1399,3 +1399,69 @@ if __name__ == "__main__":
 https://chatgpt.com/share/ae5cde7f-0faf-48be-a904-8d9f3104aad8
 
 https://www.youtube.com/watch?v=-2dLRGocWPs
+
+
+================================
+
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
+import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
+import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+
+@Component
+public class MyBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor, ApplicationContextAware {
+
+    private ApplicationContext parentContext;
+    private Environment environment;
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        this.parentContext = applicationContext;
+    }
+
+    @Override
+    public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
+        // Bind the properties from the specific section
+        Bindable<Map<String, MyProperties[]>> target = Bindable.mapOf(String.class, MyProperties[].class);
+        Map<String, MyProperties[]> propertiesMap = Binder.get(environment)
+                .bind("myproperties.prefix", target)
+                .orElseThrow(() -> new IllegalArgumentException("Failed to bind properties"));
+
+        // Create and configure the child application context
+        AnnotationConfigApplicationContext childContext = new AnnotationConfigApplicationContext();
+        childContext.setParent(parentContext);
+
+        // Register beans based on the properties
+        for (MyProperties properties : propertiesMap.get("prefix")) {
+            registerBeanInChildContext(childContext, properties);
+        }
+
+        // Refresh the child context to initialize beans
+        childContext.refresh();
+
+        // Optionally register the child context beans with the parent registry if needed
+    }
+
+    private void registerBeanInChildContext(AnnotationConfigApplicationContext childContext, MyProperties properties) {
+        GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
+        beanDefinition.setBeanClass(properties.getBeanClass());
+        beanDefinition.getConstructorArgumentValues().addGenericArgumentValue(properties);
+        childContext.registerBeanDefinition(properties.getName(), beanDefinition);
+    }
+
+    @Override
+    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
+        // No operation
+    }
+}
+
