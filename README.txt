@@ -1465,3 +1465,45 @@ public class MyBeanDefinitionRegistryPostProcessor implements BeanDefinitionRegi
     }
 }
 
+====================
+
+Configuration
+public class CustomInstantiationAwareBeanPostProcessor extends InstantiationAwareBeanPostProcessorAdapter {
+
+    private final DefaultListableBeanFactory beanFactory;
+    private final String prefix;
+
+    public CustomInstantiationAwareBeanPostProcessor(ConfigurableListableBeanFactory beanFactory, String prefix) {
+        this.beanFactory = (DefaultListableBeanFactory) beanFactory;
+        this.prefix = prefix;
+    }
+
+    @Override
+    public Object[] resolveDependency(DependencyDescriptor descriptor, String beanName, Object[] autowiredBeanNames) throws BeansException {
+        Object[] dependencies = super.resolveDependency(descriptor, beanName, autowiredBeanNames);
+        if (dependencies != null) {
+            return Arrays.stream(dependencies)
+                    .map(dep -> {
+                        String depName = beanFactory.getBeanNamesForType(dep.getClass())[0];
+                        if (!depName.startsWith(prefix)) {
+                            depName = prefix + depName;
+                        }
+                        return beanFactory.getBean(depName);
+                    })
+                    .collect(Collectors.toList()).toArray();
+        }
+        return dependencies;
+    }
+
+    @Override
+    public Object postProcessBeforeInstantiation(Class<?> beanClass, String beanName) throws BeansException {
+        // Here you can handle constructor injection as well if needed
+        return super.postProcessBeforeInstantiation(beanClass, beanName);
+    }
+
+    @Override
+    public boolean postProcessAfterInstantiation(Object bean, String beanName) throws BeansException {
+        // Here you can handle property injection (setter-based)
+        return super.postProcessAfterInstantiation(bean, beanName);
+    }
+}
