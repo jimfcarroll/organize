@@ -1507,3 +1507,32 @@ public class CustomInstantiationAwareBeanPostProcessor extends InstantiationAwar
         return super.postProcessAfterInstantiation(bean, beanName);
     }
 }
+
+
+{
+  "type": "record",
+  "name": "GenericRecord",
+  "fields": [
+    {
+      "name": "value",
+      "type": [
+        "null",
+        "boolean",
+        "int",
+        "long",
+        "float",
+        "double",
+        "string",
+        {
+          "type": "array",
+          "items": "GenericRecord"
+        },
+        {
+          "type": "map",
+          "values": "GenericRecord"
+        }
+      ]
+    }
+  ]
+}
+
