@@ -1536,3 +1536,6 @@ public class CustomInstantiationAwareBeanPostProcessor extends InstantiationAwar
   ]
 }
 
+
+https://www.youtube.com/watch?v=5eqRuVp65eY
+
