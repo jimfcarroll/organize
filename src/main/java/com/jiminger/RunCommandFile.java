@@ -3,12 +3,17 @@ package com.jiminger;
 import static com.jiminger.VfsConfig.createVfs;
 import static net.dempsy.util.Functional.uncheck;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -20,8 +25,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jiminger.commands.DeleteCommand;
+import com.jiminger.commands.HandleImageDuplicate;
 
 import net.dempsy.serialization.jackson.JsonUtils;
+import net.dempsy.util.UriUtils;
 import net.dempsy.vfs.Path;
 import net.dempsy.vfs.Vfs;
 
@@ -55,6 +62,7 @@ public class RunCommandFile {
         final String commandFileStr = args[1];
 
         final List<DeleteCommand> commands = new ArrayList<>();
+        final List<HandleImageDuplicate> idCommands = new ArrayList<>();
         {
             // make sure no "matches" entries are ever deleted.
             System.out.println("Validating the command file.");
@@ -64,14 +72,107 @@ public class RunCommandFile {
                     final var cmd = om.readValue(line, Command.class);
                     if(DeleteCommand.TYPE.equals(cmd.type)) {
                         // do delete
-                        final DeleteCommand del = om.readValue(line, DeleteCommand.class);
-                        commands.add(del);
+                        commands.add(om.readValue(line, DeleteCommand.class));
+                    } else if(HandleImageDuplicate.TYPE.equals(cmd.type)) {
+                        // stage for delete duplicate images
+                        idCommands.add(om.readValue(line, HandleImageDuplicate.class));
                     } else
                         throw new IllegalStateException("Invalid command type \"" + cmd.type + "\" for record: " + line);
                 }
             }
         }
 
+        doDeleteCommands(c, commands);
+        doHandleImageDuplicates(c, idCommands);
+    }
+
+    private static void doHandleImageDuplicates(final Config c, final List<HandleImageDuplicate> commands) throws IOException {
+        if(commands.size() == 0)
+            return;
+
+        if(c.toRemoveStore == null)
+            throw new NullPointerException("Cannot set Config.toRemoveStore to null. There needs to be a place to move files to eventually be deleted");
+        final File destDirFile = new File(c.toRemoveStore);
+        if(!destDirFile.exists()) {
+            System.out.println("Config.toRemoveStore is set to " + c.toRemoveStore + " but that directory doesn't already exist .... creating");
+            if(!c.dryRun) {
+                if(!destDirFile.mkdirs()) {
+                    System.err.println("ERROR: Failed trying to mkdirs " + c.toRemoveStore);
+                    throw new IllegalStateException("ERROR: Failed trying to mkdirs " + c.toRemoveStore);
+                }
+            }
+        }
+        // belt and suspenders
+        if(!c.dryRun) {
+            if(!destDirFile.exists()) {
+                System.err.println("ERROR: Failed trying to mkdirs " + c.toRemoveStore);
+                throw new IllegalStateException("ERROR: Failed trying to mkdirs " + c.toRemoveStore);
+            }
+
+            if(!destDirFile.isDirectory()) {
+                System.err.println("ERROR: " + c.toRemoveStore + " exists but is not a directory.");
+                throw new IllegalStateException("ERROR: " + c.toRemoveStore + " exists but is not a directory.");
+            }
+        }
+
+        commands.forEach(hid -> {
+            if(c.dryRun)
+                System.out.println("[DRYRUN] Moving " + hid.duplicate().path());
+            else {
+                System.out.println("Moving " + hid.duplicate().path());
+                move(hid.duplicate().uri(), destDirFile);
+            }
+        });
+    }
+
+    private static void move(final URI src, final File destDirFile) {
+        final File dest;
+        {
+            int count = 0;
+            String suffix = "";
+            while(true) {
+                final String name = UriUtils.getName(src) + suffix;
+                final File tDest = new File(destDirFile, name);
+                if(tDest.exists()) {
+                    System.err.println("ERROR: the destination to move " + src + " to, \"" + name + "\" already exists.");
+//                throw new IllegalStateException(
+//                    "ERROR: the destination to move " + src + " to, \"" + tDest.getAbsolutePath() + "\" already exists.");
+                    count++;
+                    suffix = "_" + count;
+                } else {
+                    dest = tDest;
+                    break;
+                }
+            }
+        }
+
+        final java.nio.file.Path sourcePath = Paths.get(src);
+
+        if(!Files.exists(sourcePath)) {
+            System.err.println("ERROR: the source to move " + src + " to, \"" + dest.getAbsolutePath() + "\" doesn't exists.");
+            throw new IllegalStateException(
+                "ERROR: the source to move " + src + " to, \"" + dest.getAbsolutePath() + "\" doesn't exists.");
+        }
+
+        System.out.println("Copying " + src + " to " + dest);
+        uncheck(() -> Files.copy(sourcePath, dest.toPath(), StandardCopyOption.COPY_ATTRIBUTES));
+
+        final InputStream[] streamsToCompare = Stream
+            .of(uncheck(() -> vfs.toPath(src).read()), new BufferedInputStream(uncheck(() -> new FileInputStream(dest))))
+            .toArray(InputStream[]::new);
+
+        System.out.println("Comparing " + src + " and " + dest);
+        if(!uncheck(() -> compareStreams(streamsToCompare))) {
+            System.err
+                .println("The copied file " + src + " and the destination file " + dest + " don't appear to match. Not deleting the source and giving up.");
+            throw new IllegalStateException(
+                "The copied file " + src + " and the destination file " + dest + " don't appear to match. Not deleting the source and giving up.");
+        }
+        System.out.println("Deleting " + src);
+        uncheck(() -> Files.delete(sourcePath));
+    }
+
+    private static void doDeleteCommands(final Config c, final List<DeleteCommand> commands) throws IOException {
         // go through all of the commands and make sure the toDelete is never ALSO among the matches
         {
             final Set<String> toDeleteAbsolutePaths = new HashSet<>();

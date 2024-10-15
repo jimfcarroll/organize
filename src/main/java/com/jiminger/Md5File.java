@@ -118,7 +118,7 @@ public class Md5File {
 
         if(!fSpec.isDirectory()) {
             if(attr == null || !attr.isOther()) {
-                final FileRecord existingFr = Optional.ofNullable(existing).map(e -> e.get(uncheck(() -> fSpec.uri()).toString())).orElse(null);
+                final FileRecord existingFr = Optional.ofNullable(existing).map(e -> e.get(fSpec.uri().toString())).orElse(null);
 
                 final FileRecord fr;
                 if(existingFr != null && existingFr.isComplete()) {

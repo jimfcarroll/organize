@@ -60,6 +60,9 @@ public class Config {
     // RunCommandFile
     public final boolean dryRun;
 
+    // RunCommandFile - set to a directory where the results will ultimately be deleted.
+    public final String toRemoveStore;
+
     // Md5File, RunCommandFile
     public final boolean enableLocalFileCaching;
 
@@ -124,6 +127,7 @@ public class Config {
         passwordsToTry = null;
         recurseIntoArchives = true;
         dryRun = false;
+        toRemoveStore = null;
     }
 
 }
