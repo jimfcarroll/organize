@@ -1,4 +1,4 @@
-package com.jiminger;
+package com.jiminger.utils;
 
 import static net.dempsy.util.Functional.uncheck;
 
@@ -7,33 +7,20 @@ import java.security.DigestInputStream;
 import java.security.MessageDigest;
 
 import net.dempsy.util.io.MegaByteBuffer;
-import net.dempsy.vfs.FileSpec;
 import net.dempsy.vfs.FileSpec.ByteBufferResource;
 
 public class MD5 {
 
-    private static boolean avoidMemMap = false;
-
-    public static void avoidMemMap() {
-        avoidMemMap(true);
-    }
-
-    public static void avoidMemMap(final boolean amm) {
-        avoidMemMap = amm;
-    }
-
-    public static byte[] hash(final FileSpec fSpec) throws IOException {
-        if(avoidMemMap || !fSpec.supportsMemoryMap()) {
+    public static byte[] hash(final FileAccess fSpec) throws IOException {
+        if(!fSpec.canMemoryMap()) {
             final MessageDigest md = uncheck(() -> MessageDigest.getInstance("MD5"));
-            try(DigestInputStream dis = new DigestInputStream(fSpec.getStandardInputStream(), md);) {
+            try(DigestInputStream dis = new DigestInputStream(fSpec.getInputStream(), md);) {
                 while(dis.read() >= 0);
             }
             return md.digest();
         }
 
-        try(var bbr = fSpec.mapFile();) {
-            return hash(bbr);
-        }
+        return hash(fSpec.mapFile());
     }
 
     public static byte[] hash(final ByteBufferResource bbr) throws IOException {

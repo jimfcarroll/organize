@@ -1,13 +1,12 @@
 package com.jiminger;
 
 import static com.jiminger.VfsConfig.createVfs;
+import static net.dempsy.util.Functional.chain;
 import static net.dempsy.util.Functional.uncheck;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -15,37 +14,29 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jiminger.commands.Command;
 import com.jiminger.commands.DeleteCommand;
 import com.jiminger.commands.HandleImageDuplicate;
+import com.jiminger.records.FileRecord;
 
-import net.dempsy.serialization.jackson.JsonUtils;
 import net.dempsy.util.UriUtils;
 import net.dempsy.vfs.Path;
 import net.dempsy.vfs.Vfs;
+
+import ai.kognition.pilecv4j.image.Closer;
 
 public class RunCommandFile {
 
     private static Vfs vfs;
 
-    private static ObjectMapper om = JsonUtils.makeStandardObjectMapper();
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonInclude(Include.NON_EMPTY)
-    public static record Command(String type) {
-        public Command {
-            if(type == null)
-                throw new IllegalArgumentException("Cannot construct a " + Command.class.getSimpleName() + " with no type field");
-        }
-    }
+    private static ObjectMapper om = FileRecord.makeStandardObjectMapper();
 
     static public void main(final String[] args) throws Exception {
 
@@ -66,20 +57,15 @@ public class RunCommandFile {
         {
             // make sure no "matches" entries are ever deleted.
             System.out.println("Validating the command file.");
-            try(final BufferedReader br = new BufferedReader(new FileReader(commandFileStr))) {
-                String line;
-                while((line = br.readLine()) != null) {
-                    final var cmd = om.readValue(line, Command.class);
-                    if(DeleteCommand.TYPE.equals(cmd.type)) {
-                        // do delete
-                        commands.add(om.readValue(line, DeleteCommand.class));
-                    } else if(HandleImageDuplicate.TYPE.equals(cmd.type)) {
-                        // stage for delete duplicate images
-                        idCommands.add(om.readValue(line, HandleImageDuplicate.class));
-                    } else
-                        throw new IllegalStateException("Invalid command type \"" + cmd.type + "\" for record: " + line);
-                }
-            }
+            try(final var closeMe = chain(Command.readCommands(commandFileStr), s -> s
+                .forEach(o -> {
+                    if(o instanceof DeleteCommand)
+                        commands.add((DeleteCommand)o);
+                    else if(o instanceof HandleImageDuplicate)
+                        idCommands.add((HandleImageDuplicate)o);
+                    else
+                        throw new IllegalStateException("Invalid command type \"" + o);
+                }));) {}
         }
 
         doDeleteCommands(c, commands);
@@ -117,9 +103,9 @@ public class RunCommandFile {
 
         commands.forEach(hid -> {
             if(c.dryRun)
-                System.out.println("[DRYRUN] Moving " + hid.duplicate().path());
+                System.out.println("[DRYRUN] Moving " + hid.duplicate().uri());
             else {
-                System.out.println("Moving " + hid.duplicate().path());
+                System.out.println("Moving " + hid.duplicate().uri());
                 move(hid.duplicate().uri(), destDirFile);
             }
         });
@@ -207,45 +193,47 @@ public class RunCommandFile {
         }
 
         for(final DeleteCommand del: commands) {
-            // we're going to remove del.toDelete but ONLY if the files in del.matches exist and are identical.
-            if(del.matches() == null || del.matches().size() == 0)
-                throw new IllegalArgumentException("Illegal " + DeleteCommand.class.getSimpleName() + " with no matched records");
+            try(final var closer = new Closer();) {
+                // we're going to remove del.toDelete but ONLY if the files in del.matches exist and are identical.
+                if(del.matches() == null || del.matches().size() == 0)
 
-            // check for the existence of all files.
-            Stream.concat(Stream.of(del.toDelete()), del.matches().stream())
-                .map(fr -> fr.path())
-                .map(p -> uncheck(() -> new URI(p)))
-                .map(u -> uncheck(() -> vfs.toPath(u)))
-                .forEach(p -> {
-                    if(!uncheck(() -> p.exists()))
-                        throw new IllegalStateException("The file at \"" + p + "\" from the DEL command \"" + del + "\" doesn't exit");
-                });
+                    // check for the existence of all files.
+                    Stream.concat(Stream.of(del.toDelete()), del.matches().stream())
+                        .map(fr -> fr.uri())
+                        .map(p -> uncheck(() -> p))
+                        .map(u -> uncheck(() -> vfs.toPath(u)))
+                        .forEach(p -> {
+                            if(!uncheck(() -> p.exists()))
+                                throw new IllegalStateException("The file at \"" + p + "\" from the DEL command \"" + del + "\" doesn't exit");
+                        });
 
-            ;
+                ;
 
-            // create an array of input streams using vfs (and potentially mmaping files)
-            // and check that the toDelete stream matches byte for byte all of the matching streams.
-            // System.out.println(del);
-            final InputStream[] streamsToCompare = Stream.concat(Stream.of(del.toDelete()), del.matches().stream())
-                .map(fr -> uncheck(() -> fr.read(vfs)))
-                .toArray(InputStream[]::new);
+                // create an array of input streams using vfs (and potentially mmaping files)
+                // and check that the toDelete stream matches byte for byte all of the matching streams.
+                // System.out.println(del);
+                final InputStream[] streamsToCompare = Stream.concat(Stream.of(del.toDelete()), del.matches().stream())
+                    .map(fr -> uncheck(() -> closer.add(fr.fileAccess(vfs, c.avoidMemMap))))
+                    .map(fr -> uncheck(() -> closer.add(fr.getInputStream())))
+                    .toArray(InputStream[]::new);
 
-            if(streamsToCompare.length < 2)
-                throw new IllegalStateException("The DEL record entry doesn't contain anything to match against: " + om.writeValueAsString(del));
+                if(streamsToCompare.length < 2)
+                    throw new IllegalStateException("The DEL record entry doesn't contain anything to match against: " + om.writeValueAsString(del));
 
-            final Path path = vfs.toPath(del.toDelete().uri());
-            if(compareStreams(streamsToCompare)) {
-                if(c.dryRun)
-                    System.out.println("[DRYRUN] Deleting " + path);
-                else {
-                    System.out.println("Deleting " + path);
-                    path.delete();
+                final Path path = vfs.toPath(del.toDelete().uri());
+                if(compareStreams(streamsToCompare)) {
+                    if(c.dryRun)
+                        System.out.println("[DRYRUN] Deleting " + path);
+                    else {
+                        System.out.println("Deleting " + path);
+                        path.delete();
+                    }
+                } else {
+                    if(c.dryRun)
+                        System.out.println("[DRYRUN] Skipping " + path);
+                    else
+                        System.out.println("Skipping " + path);
                 }
-            } else {
-                if(c.dryRun)
-                    System.out.println("[DRYRUN] Skipping " + path);
-                else
-                    System.out.println("Skipping " + path);
             }
         }
     }
@@ -281,7 +269,7 @@ public class RunCommandFile {
                 // -1 if the stream is completely drained. In any of these cases the other stream should do the same.
                 if(numBytesBase != readBytes)
                     return false;
-                if(numBytesBase >= 0 && !java.util.Arrays.equals(baseBuffer, 0, numBytesBase, toCompareTo, 0, readBytes))
+                if(numBytesBase >= 0 && !Arrays.equals(baseBuffer, 0, numBytesBase, toCompareTo, 0, readBytes))
                     return false;
             }
         }

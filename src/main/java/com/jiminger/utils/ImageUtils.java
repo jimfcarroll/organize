@@ -1,4 +1,4 @@
-package com.jiminger;
+package com.jiminger.utils;
 
 import static net.dempsy.util.Functional.uncheck;
 
@@ -7,16 +7,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.imaging.ImageProcessingException;
@@ -50,10 +47,22 @@ import ai.kognition.pilecv4j.image.ImageFile;
 import ai.kognition.pilecv4j.image.Utils;
 
 public class ImageUtils {
+    static {
+        CvMat.initOpenCv();
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ImageUtils.class);
     private static final String LINE_SEPARATOR = System.lineSeparator();
 
-    public static final String PPM_MIME_TYPE = "image/x-portable-pixmap";
+    public static final int DONT_RESIZE = Integer.MAX_VALUE;
+
+//    public static final String PPM_MIME_TYPE = "image/x-portable-pixmap";
+
+    private static final Set<String> decodableImageMimes = new HashSet<String>(Set.of(
+        "image/bmp", "image/cgm", "image/emf", "image/gif", "image/icns", "image/jp2", "image/jpeg", "image/png", "image/svg+xml", "image/tiff",
+        "image/vnd.djvu", "image/vnd.fst", "image/vnd.microsoft.icon", "image/vnd.ms-modi", "image/webp", "image/wmf", "image/x-jp2-codestream",
+        "image/x-portable-bitmap", "image/x-portable-graymap", "image/x-portable-pixmap", "image/x-raw-canon", "image/x-raw-panasonic", "image/x-tga",
+        "image/x-xbitmap", "image/x-xcf"));
 
     public static CvMat ppmDecode(final byte[] ppm) {
         try(final CvMat mat = new CvMat(1, ppm.length, CvType.CV_8SC1);) {
@@ -103,39 +112,49 @@ public class ImageUtils {
         return -1;
     }
 
-    public static CvMat loadImageWithCorrectOrientation(final FileRecord cur, final Vfs vfs) throws IOException, URISyntaxException, ImageProcessingException {
-        final File file = vfs.toFile(new URI(cur.path()));
-        try(final CvMat mat = ImageFile.readMatFromFile(file.getAbsolutePath());) {
-            if(mat == null)
+    public static CvMat loadImage(final FileAccess fSpec, final int maxDim) throws IOException {
+        boolean runOther = false;
+        if(fSpec.canMemoryMap()) {
+            try(var c = new Closer();
+                CvMat bytes = new CvMat(1, (int)fSpec.size(), CvType.CV_8UC1, fSpec.mapFile().streamOfByteBuffers().findFirst().orElseThrow());
+                CvMat img = resizeIfTooLarge(c.addMat(Imgcodecs.imdecode(bytes, Imgcodecs.IMREAD_UNCHANGED)), maxDim, maxDim);) {
+                if(img == null || img.dataAddr() == 0)
+                    runOther = true;
+                else
+                    return img.returnMe();
+            }
+        } else
+            runOther = true;
+
+        if(runOther) {
+            try(var c = new Closer();
+                CvMat img = resizeIfTooLarge(c.addMat(ImageFile.readMatFromFile(fSpec.toFile().getAbsolutePath())), maxDim, maxDim);) {
+                if(img == null || img.dataAddr() == 0)
+                    return null;
+                else
+                    return img.returnMe();
+            }
+        }
+        return null;
+    }
+
+    public static CvMat loadImageWithCorrectOrientation(final FileAccess fSpec, final int maxDim) throws IOException, ImageProcessingException {
+        try(var img = loadImage(fSpec, maxDim);) {
+            if(img == null)
                 return null;
-            final Metadata matMd = ImageMetadataReader.readMetadata(file);
-            fixOrientation(mat, cur.mime(), matMd);
-            return mat.returnMe();
+            try {
+                final Metadata matMd = ImageMetadataReader.readMetadata(fSpec.getInputStream(), fSpec.size());
+                fixOrientation(img, fSpec.mimeType("UNKNOWN"), matMd);
+            } catch(final ImageProcessingException ipe) {
+                System.out.println("WARNING: Couldn't read metadata so cannot correct orientation for " + fSpec.uri());
+            }
+            return img.returnMe();
         }
     }
 
-    public static CvMat loadImageWithCorrectOrientationAndNormalizedChannels(final FileRecord cur, final Vfs vfs)
-        throws IOException, URISyntaxException, ImageProcessingException {
-        return normalizeChannels(loadImageWithCorrectOrientation(cur, vfs));
-    }
-
-    public static CvMat normalizeChannels(final CvMat src) {
-        try(final Closer closer = new Closer();) {
-            final List<Mat> channels = new ArrayList<Mat>();
-            Core.split(src, channels);
-
-            channels.forEach(m -> closer.addMat(m));
-
-            for(int i = 0; i < channels.size(); i++) {
-                final Mat channel = channels.get(i);
-                Core.normalize(channel, channel, 0, 255, Core.NORM_MINMAX);
-            }
-
-            try(final CvMat normalizedImg = new CvMat();) {
-                Core.merge(channels, normalizedImg);
-                return normalizedImg.returnMe();
-            }
-        }
+    public static CvMat loadImageWithCorrectOrientationAndNormalizedChannels(final FileAccess cur, final Vfs vfs, final int maxDim, final double alpha,
+        final double beta) throws IOException, ImageProcessingException {
+        return Sci.normalizeChannels(loadImageWithCorrectOrientation(cur, maxDim), alpha, beta);
     }
 
     public static void fixOrientation(final Mat image, final String mime, final Metadata md) {
@@ -216,6 +235,8 @@ public class ImageUtils {
      */
     public static CvMat resizeIfTooLarge(final Mat mat, final int maxRows, final int maxCols) {
         // It's likely that we're going to be getting images that are wider than they are longer
+        if(mat == null)
+            return null;
         if(mat.cols() > maxCols || mat.rows() > maxRows) {
             final Size maxSize = new Size(maxCols, maxRows);
             final Size newSize = Utils.scaleDownOrNothing(mat, maxSize);
@@ -242,6 +263,8 @@ public class ImageUtils {
      * not too large. A scale < 0 is invalid.
      */
     public static CvMat resizeIfTooLarge(final Mat mat, final double scale) {
+        if(mat == null)
+            return null;
         if(scale < 1 && scale > 0) {
             final Size newSize = new Size(mat.width() * scale, mat.height() * scale);
             try(final CvMat newImage = new CvMat()) {
@@ -279,42 +302,8 @@ public class ImageUtils {
         destAttrView.setTimes(lastModifiedTime, lastAccessTime, creationTime);
     }
 
-    public static double correlationCoef(final CvMat mat1, final CvMat mat2) {
-
-        try(Closer closer = new Closer();) {
-
-            final CvMat img1;
-            final CvMat img2;
-
-            if(!mat1.size().equals(mat2.size())) {
-                final CvMat larger = mat1.total() > mat2.total() ? mat1 : mat2;
-                final CvMat smaller = mat1.total() > mat2.total() ? mat2 : mat1;
-
-                img1 = smaller;
-                img2 = closer.add(new CvMat());
-                Imgproc.resize(larger, img2, smaller.size(), 0, 0, Imgproc.INTER_AREA);
-            } else {
-                img1 = mat1;
-                img2 = mat2;
-            }
-
-            // Ensure images are of the same size
-            final CvMat result = closer.add(new CvMat());
-            Imgproc.GaussianBlur(img1, img1, new Size(7, 7), 0, 0);
-            Imgproc.GaussianBlur(img2, img2, new Size(7, 7), 0, 0);
-            final CvMat nimg1 = closer.add(normalizeChannels(img1));
-            final CvMat nimg2 = closer.add(normalizeChannels(img2));
-            Imgproc.matchTemplate(nimg1, nimg2, result, Imgproc.TM_CCOEFF_NORMED);
-
-            final double correlationCoefficient = Core.minMaxLoc(result).maxVal;
-            return correlationCoefficient;
-        }
+    public static boolean isDecodableImage(final FileAccess fs) {
+        return decodableImageMimes.contains(uncheck(() -> fs.mimeType("UNKNOWN"))) && uncheck(() -> fs.size()) != 0;
     }
 
-    public static double correlationCoef(final CvMat[] mains, final CvMat mat) {
-        return Arrays.stream(mains)
-            .mapToDouble(m -> correlationCoef(m, mat))
-            .max()
-            .orElse(0);
-    }
 }

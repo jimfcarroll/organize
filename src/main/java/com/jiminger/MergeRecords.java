@@ -1,23 +1,20 @@
 package com.jiminger;
 
 import static com.jiminger.Config.FILE_RECORD_FILE_TO_WRITE;
-import static com.jiminger.FileRecord.readFileRecords;
+import static com.jiminger.records.FileRecord.readFileRecords;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import net.dempsy.serialization.jackson.JsonUtils;
+import com.jiminger.records.FileRecord;
 
 public class MergeRecords {
 
@@ -25,7 +22,7 @@ public class MergeRecords {
         System.err.println("Usage: java -cp [classpath] " + MergeRecords.class.getName() + " path/to/config.json");
     }
 
-    private static final ObjectMapper om = JsonUtils.makeStandardObjectMapper();
+    private static final ObjectMapper from = FileRecord.makeStandardObjectMapper();
 
     static public void main(final String[] args) throws Exception {
 
@@ -45,26 +42,28 @@ public class MergeRecords {
 
             System.out.println("Reading file records.");
 
-            final List<FileRecord> frs = readFileRecords(
-                Stream.concat(Stream.of(md5FileToWrite), Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0]))).toArray(String[]::new)
+            final List<FileRecord> frs = readFileRecords(md5FileToWrite, md5FilesToRead);
 
-            );
-
-            System.out.println("Merging file records.");
+            System.out.println("Merging " + frs.size() + " file records.");
             // collapse the list.
             final List<FileRecord> resulting = new ArrayList<>(frs.size());
-            final Map<String, FileRecord> uniqueRecords = new HashMap<>(frs.size());
+            final Map<URI, FileRecord> uniqueRecords = new HashMap<>(frs.size());
             int dupCount = 0;
             for(final FileRecord fr: frs) {
-                final FileRecord existing = uniqueRecords.get(fr.path());
+                final FileRecord existing = uniqueRecords.get(fr.uri());
+                final FileRecord toPut;
                 if(existing != null) {
-                    if(!existing.equals(fr))
+//                    if(!existing.equals(fr))
+                    if(existing.md5().equals(fr.md5()))
+                        toPut = fr.additional() != null ? fr : existing;
+                    else
                         throw new IllegalStateException("Several FileRecords are duplicated but they differ. One is " + fr + " and the other is " + existing);
                     dupCount++;
                 } else {
-                    uniqueRecords.put(fr.path(), fr);
+                    toPut = fr;
                     resulting.add(fr);
                 }
+                uniqueRecords.put(toPut.uri(), toPut);
             }
 
             System.out.println("Merged record count: " + resulting.size());
@@ -78,7 +77,7 @@ public class MergeRecords {
             final File md5File = new File(md5FileToWrite);
             try(PrintWriter md5os = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File)));) {
                 for(final FileRecord fr: resulting) {
-                    md5os.println(om.writeValueAsString(fr));
+                    md5os.println(from.writeValueAsString(fr));
                 }
             }
             System.out.println("Done!");

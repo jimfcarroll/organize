@@ -1,5 +1,6 @@
 package com.jiminger;
 
+import static com.jiminger.utils.ImageUtils.DONT_RESIZE;
 import static net.dempsy.util.Functional.uncheck;
 
 import java.io.File;
@@ -23,6 +24,8 @@ public class Config {
 
     public static final String FILE_RECORD_FILE_TO_WRITE = uncheck(() -> Config.class.getField(FILE_RECORD_FILE_TO_WRITE_STR).getName());
 
+    private static final ObjectMapper mapper = JsonUtils.makeStandardObjectMapper();
+
     public static Config load(final String configPath) throws IOException {
         final File configFile = new File(configPath);
         return load(configFile);
@@ -34,7 +37,6 @@ public class Config {
         if(configFile.isDirectory())
             throw new FileNotFoundException("The config file specified \"" + configFile.getAbsolutePath() + "\" is a directory.");
 
-        final ObjectMapper mapper = JsonUtils.makeStandardObjectMapper();
         return mapper.readValue(configFile, Config.class);
     }
 
@@ -76,6 +78,12 @@ public class Config {
     public final String[] md5FilesToRead;
 
     // Md5File
+    public final String md5RemainderFile;
+
+    // Md5File
+    public final boolean verify;
+
+    // Md5File
     public final FileReference[] directoriesToScan;
 
     // Md5File
@@ -97,6 +105,12 @@ public class Config {
     // Md5File
     public final boolean recurseIntoArchives;
 
+    // ImageDupFinder
+    public final String[] imageCorrelationsFilesToRead;
+    public final String imageCorrelationsFileToWrite;
+
+    public final int maxImageDim;
+
     public Predicate<FileSpec> md5FileFilter() {
         return sourceFile -> {
             for(final String fn: fileNameContains) {
@@ -108,15 +122,20 @@ public class Config {
     }
 
     public void applyGlobalSettings() {
-        System.out.println((avoidMemMap ? "" : "NOT ") + "avoiding memory mapping.");
-        MD5.avoidMemMap(avoidMemMap);
         System.out.println((enableLocalFileCaching ? "" : "NOT ") + "enabling local file caching.");
         LocalFileSystem.enableCaching(enableLocalFileCaching);
+    }
+
+    @Override
+    public String toString() {
+        return uncheck(() -> mapper.writeValueAsString(this));
     }
 
     private Config() {
         md5FileToWrite = null;
         md5FilesToRead = null;
+        md5RemainderFile = null;
+        verify = false;
         directoriesToScan = null;
         deleteEmptyDirs = false;
         md5FileWriteLineBuffered = false;
@@ -128,6 +147,9 @@ public class Config {
         recurseIntoArchives = true;
         dryRun = false;
         toRemoveStore = null;
+        imageCorrelationsFilesToRead = null;
+        imageCorrelationsFileToWrite = null;
+        maxImageDim = DONT_RESIZE;
     }
 
 }

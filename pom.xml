@@ -10,8 +10,8 @@
   <properties>
     <dempsy-commons.version>2.4.2-SNAPSHOT</dempsy-commons.version>
     
-    <!-- <platform>linux-aarch64</platform> -->
-    <platform>linux-x86_64</platform>
+    <platform>linux-aarch64</platform>
+    <!--<platform>linux-x86_64</platform>-->
 
   </properties>
   
@@ -47,7 +47,19 @@
       <groupId>ai.kognition.pilecv4j</groupId>
       <artifactId>native-image-${platform}</artifactId>
       <classifier>bin</classifier>
-      <version>1.0.1-SNAPSHOT</version>
+      <version>1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.kognition.pilecv4j</groupId>
+      <artifactId>native-image-linux-x86_64</artifactId>
+      <classifier>bin</classifier>
+      <version>1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.kognition.pilecv4j</groupId>
+      <artifactId>opencv-linux-aarch64</artifactId>
+      <classifier>withlib</classifier>
+      <version>1.0-opencv4.5.2</version>
     </dependency>
     <dependency>
       <groupId>net.sf.sevenzipjbinding</groupId>
