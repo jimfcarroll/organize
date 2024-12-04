@@ -15,9 +15,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -30,6 +28,7 @@ import com.jiminger.utils.FileAccess;
 import com.jiminger.utils.MD5;
 
 import net.dempsy.util.Functional;
+import net.dempsy.util.UriUtils;
 import net.dempsy.vfs.FileSpec;
 import net.dempsy.vfs.OpContext;
 import net.dempsy.vfs.Path;
@@ -40,6 +39,8 @@ public class Md5File {
 
     private static Vfs vfs;
     private static ObjectMapper om = FileRecord.makeStandardObjectMapper();
+
+    public static Set<String> skip = Set.of(".@__thumb");
 
     public static void usage() {
         System.err.println("Usage: java -cp [classpath] " + Md5File.class.getName() + " path/to/config.json");
@@ -62,14 +63,15 @@ public class Md5File {
                     c.directoriesToScan
 
                     , c.md5RemainderFile, c.failedFile, c.deleteEmptyDirs, c.md5FileFilter(),
-                    c.md5FileWriteLineBuffered, vfs, c.recurseIntoArchives, c.avoidMemMap, c.verify);
+                    c.md5FileWriteLineBuffered, vfs, c.recurseIntoArchives, c.avoidMemMap, c.verify, c.verifyCheckpointFile);
             }
         }
     }
 
     public static void makeMd5File(final String md5FileToWrite, final String[] md5FilesToRead, final FileReference[] directoriesToScan,
         final String md5RemainderFile, final String failedFile, final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter,
-        final boolean lineBuffered, final Vfs vfs, final boolean recurseIntoArchives, final boolean avoidMemMap, final boolean verify) throws IOException {
+        final boolean lineBuffered, final Vfs vfs, final boolean recurseIntoArchives, final boolean avoidMemMap, final boolean verify,
+        final String verifyCheckpointFile) throws IOException {
 
         if(md5FileToWrite == null)
             throw new IllegalArgumentException("Cannot generate FileRecord index without setting md5FileToWrite in the config");
@@ -83,14 +85,18 @@ public class Md5File {
 
         final Manager file2FileRecords = makeFileRecordsManager(vfs, md5FileToWrite, md5FilesToRead);
 
+        final Manager verifyManager = (verify && verifyCheckpointFile != null) ? makeFileRecordsManager(vfs, verifyCheckpointFile, new String[0]) : null;
+
         final File md5File = new File(md5FileToWrite);
         if(failedFile != null)
             System.out.println("Writing errors to: " + failedFile);
         try(PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile)))
             : new PrintWriter(System.err);
-            PrintWriter md5os = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File)));) {
+            PrintWriter md5os = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File)));
+            PrintWriter verifyCheckpointOs = verify && verifyCheckpointFile != null
+                ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(verifyCheckpointFile)))
+                : null;) {
 
-            final Set<FileRecord> written = new HashSet<>();
             final long startTime = System.currentTimeMillis();
             // pass to calc md5
             recheck(() -> Arrays.stream(directoriesToScan)
@@ -98,15 +104,12 @@ public class Md5File {
                 .forEach(uri -> uncheck(() -> {
                     try(var sub = vfs.operation();) {
                         final Path path = sub.toPath(uri);
-                        written.addAll(
-                            doMd5(md5os, failed, new FileSpec(path), file2FileRecords, deleteEmtyDirs, md5FileFilter, lineBuffered, sub, recurseIntoArchives,
-                                avoidMemMap, verify));
+                        doMd5(md5os, failed, new FileSpec(path), file2FileRecords, deleteEmtyDirs, md5FileFilter, lineBuffered, sub, recurseIntoArchives,
+                            avoidMemMap, verify, verifyCheckpointOs, verifyManager);
                     }
                 })));
 
-            System.out.println("Wrote " + written.size() + " entries into " + md5FileToWrite);
             if(md5RemainderFile != null) {
-                written.forEach(fr -> file2FileRecords.remove(fr.uri()));
                 System.out.println("Writing " + file2FileRecords.size() + " remaining entries to " + md5RemainderFile);
                 try(PrintWriter remainderPw = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5RemainderFile)));) {
                     file2FileRecords.stream().forEach(fr -> uncheck(() -> remainderPw.println(om.writeValueAsString(fr))));
@@ -117,16 +120,19 @@ public class Md5File {
         }
     }
 
-    private static Set<FileRecord> doMd5(final PrintWriter md5os, final PrintWriter failed, final FileSpec fSpec, final Manager existing,
-        final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered, final OpContext oc,
-        final boolean recurseIntoArchives, final boolean avoidMemMap, final boolean verify) throws IOException {
+    private static void doMd5(final PrintWriter md5os, final PrintWriter failed, final FileSpec fSpec, final Manager existing, final boolean deleteEmtyDirs,
+        final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered, final OpContext oc, final boolean recurseIntoArchives, final boolean avoidMemMap,
+        final boolean verify, final PrintWriter verifyCheckpointOs, final Manager verifyManager) throws IOException {
 
-        final Set<FileRecord> ret = new HashSet<>();
+        if(skip.contains(UriUtils.getName(fSpec.uri().getPath()))) {
+            System.out.println("SKIPPING: " + fSpec.uri());
+            return;
+        }
 
         final BasicFileAttributes attr = fSpec.getAttr();
         if(attr != null && attr.isSymbolicLink()) {
             System.out.println("SKIPPING: Symbolic link: " + fSpec.uri());
-            return ret;
+            return;
         }
 
         if(!fSpec.exists())
@@ -134,16 +140,16 @@ public class Md5File {
 
         if(!md5FileFilter.test(fSpec)) {
             System.out.println("SKIPPING: " + fSpec.uri() + "(" + fSpec.mimeType() + ")");
-            return ret;
+            return;
         }
 
         if(!fSpec.isDirectory()) {
             if(attr == null || !attr.isOther()) {
-                try(FileAccess fAccess = new FileAccess(fSpec, avoidMemMap);) {
+                try(final FileAccess fAccess = new FileAccess(fSpec, avoidMemMap);) {
                     final FileRecord existingFr = existing.find(fAccess.uri());
                     final boolean frExists = existingFr != null && existingFr.isComplete();
 
-                    final FileRecord fr;
+                    FileRecord fr = null;
                     if(!verify && frExists) {
                         System.out.println("COPYING  : " + fAccess.uri());
                         fAccess.setMime(existingFr.mime()); // otherwise it will read the mime by opening a stream in order to determine if it's recursable
@@ -155,27 +161,45 @@ public class Md5File {
                         else
                             fr = existingFr;
                     } else {
-                        if(verify && frExists)
-                            System.out.println("VERIFYING: " + fAccess.uri());
-                        else
+                        boolean doScan = true;
+                        if(verify && frExists) {
+                            final var checkpoint = (verifyManager != null) ? verifyManager.find(fAccess.uri()) : null;
+                            if(checkpoint != null) {
+                                doScan = false;
+                                System.out.println("COPYINGCP: " + fAccess.uri());
+                                fAccess.setMime(checkpoint.mime()); // otherwise it will read the mime by opening a stream in order to determine
+                                                                    // if it's recursable
+                                fr = checkpoint;
+                            } else
+                                System.out.println("VERIFYING: " + fAccess.uri());
+                        } else
                             System.out.println("SCANNING : " + fAccess.uri());
-                        try(final var header = fAccess.preserveHeader(1024 * 1024);) {
-                            final String md5 = bytesToHex(MD5.hash(fAccess));
-                            final String mime = fAccess.mimeType("UNKNOWN");
-                            final ImageDetails imageDetails = ImageDetails.checkImageDetails(fAccess, existingFr, failed);
-                            fr = new FileRecord(fAccess.uri(), fAccess.size(), mime, fAccess.lastModifiedTime(), md5,
-                                imageDetails != null ? chain(new HashMap<>(), m -> m.put(ImageDetails.KEY, imageDetails)) : null);
+
+                        if(doScan) {
+                            try(final var header = fAccess.preserveHeader(1024 * 1024);) {
+                                final String md5 = bytesToHex(MD5.hash(fAccess));
+                                final String mime = fAccess.mimeType("UNKNOWN");
+                                final ImageDetails imageDetails = ImageDetails.checkImageDetails(fAccess, existingFr, failed);
+                                fr = new FileRecord(fAccess.uri(), fAccess.size(), mime, fAccess.lastModifiedTime(), md5,
+                                    imageDetails != null ? chain(new HashMap<>(), m -> m.put(ImageDetails.KEY, imageDetails)) : null);
+                            }
                         }
                     }
+                    if(fr == null)
+                        throw new IllegalStateException(); /// this is impossible but if I change code incorrectly I want a systemic failure.
                     if(verify && frExists) {
                         if(!fr.md5().equals(existingFr.md5())) {
                             final var msg = "VERIFICATION FAILED on " + fAccess.uri() + " for " + fr + " against existing record " + existingFr;
                             failed.println(msg);
                             System.out.println(msg);
                             failed.flush();
+                        } else if(verifyCheckpointOs != null) {
+                            verifyCheckpointOs.println(om.writeValueAsString(fr));
+                            if(lineBuffered)
+                                verifyCheckpointOs.flush();
                         }
                     } else {
-                        ret.add(fr);
+                        existing.remove(fr.uri());
                         md5os.println(om.writeValueAsString(fr));
                     }
 
@@ -186,7 +210,7 @@ public class Md5File {
                 if(attr.isOther()) {
                     System.out.println("SKIPPING: Unknown file type (pipe, socket, device, etc.): " + fSpec.uri());
                     fSpec.setMime(""); // there is no mime for this.
-                    return Collections.emptySet(); // can't let this fSpec have isRecursable called since it will try to read the file.
+                    return; // can't let this fSpec have isRecursable called since it will try to read the file.
                 } else
                     throw new IOException("Illegal file type: " + fSpec);
             }
@@ -216,7 +240,7 @@ public class Md5File {
                     failed.flush();
                     System.out.println("ERROR: LISTING: " + fSpec.uri());
                     ze.printStackTrace();
-                    return ret; // don't continue on.
+                    return; // don't continue on.
                 }
             }
             // =========================================================================
@@ -232,8 +256,8 @@ public class Md5File {
                         () -> Arrays.stream(dirContents)
                             .forEach(f -> uncheck(() -> {
                                 try(OpContext subCtx = oc.sub();) {
-                                    ret.addAll(doMd5(md5os, failed, f, existing, deleteEmtyDirs, md5FileFilter, lineBuffered, subCtx, recurseIntoArchives,
-                                        avoidMemMap, verify));
+                                    doMd5(md5os, failed, f, existing, deleteEmtyDirs, md5FileFilter, lineBuffered, subCtx, recurseIntoArchives,
+                                        avoidMemMap, verify, verifyCheckpointOs, verifyManager);
                                 }
                             })));
                 } catch(final IOException ze) {
@@ -244,11 +268,11 @@ public class Md5File {
                     failed.flush();
                     System.out.println("ERROR: LISTING: " + fSpec.uri());
                     ze.printStackTrace();
-                    return ret; // don't continue on.
+                    return; // don't continue on.
                 }
             }
         }
 
-        return ret;
+        return;
     }
 }

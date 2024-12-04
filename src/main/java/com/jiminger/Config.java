@@ -84,6 +84,9 @@ public class Config {
     public final boolean verify;
 
     // Md5File
+    public final String verifyCheckpointFile;
+
+    // Md5File
     public final FileReference[] directoriesToScan;
 
     // Md5File
@@ -136,6 +139,7 @@ public class Config {
         md5FilesToRead = null;
         md5RemainderFile = null;
         verify = false;
+        verifyCheckpointFile = null;
         directoriesToScan = null;
         deleteEmptyDirs = false;
         md5FileWriteLineBuffered = false;

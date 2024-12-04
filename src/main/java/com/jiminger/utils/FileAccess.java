@@ -88,6 +88,7 @@ public class FileAccess implements Closeable {
         }
 
         if(bbr != null) {
+            System.out.println("Closing " + fSpec.uri());
             try {
                 bbr.close();
             } catch(final IOException | RuntimeException ioe) {
@@ -115,6 +116,7 @@ public class FileAccess implements Closeable {
 
     private ByteBufferResource getBbr() throws IOException {
         if(bbr == null) {
+            System.out.println("Opening " + fSpec.uri());
             if(!canMemoryMap())
                 throw new IllegalStateException(
                     "Cannot request memory mapping on " + fSpec + " because "

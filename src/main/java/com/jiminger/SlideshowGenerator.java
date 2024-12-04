@@ -1,7 +1,7 @@
 package com.jiminger;
 
 import static com.jiminger.VfsConfig.createVfs;
-import static com.jiminger.records.FileRecord.readFileRecords;
+import static com.jiminger.records.FileRecord.makeFileRecordsManager;
 import static com.jiminger.utils.ImageUtils.DONT_RESIZE;
 import static com.jiminger.utils.ImageUtils.loadImageWithCorrectOrientation;
 import static com.jiminger.utils.Utils.groupByBaseFnameSimilarity;
@@ -20,11 +20,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.drew.imaging.ImageProcessingException;
 import com.jiminger.records.FileRecord;
@@ -77,30 +74,21 @@ public class SlideshowGenerator {
             dstDir.delete();
         }
 
-        final Map<URI, FileRecord> file2FileRecords =
+        try(var file2FileRecords = makeFileRecordsManager(vfs, conf.md5FileToWrite, conf.md5FilesToRead);) {
 
-            readFileRecords(
-                Stream.concat(Stream.of(conf.md5FileToWrite), Arrays.stream(Optional.ofNullable(conf.md5FilesToRead).orElse(new String[0])))
-                    .toArray(String[]::new)
+            // get all image records.
+            final List<FileRecord> records = new LinkedList<>(
 
-            ).stream()
-                .collect(Collectors.toMap(fs -> fs.uri(), fs -> fs, (fr1, fr2) -> {
-                    if(fr1.equals(fr2))
-                        return fr1;
-                    throw new IllegalStateException("Duplicate keys for " + fr1 + " and " + fr2 + " that can't be merged.");
-                }));
+                file2FileRecords.stream()
+                    .filter(fr -> isParentUri(srcUri, fr.uri()))
+                    .filter(fr -> fr.mime() != null)
+                    .filter(fr -> fr.mime().startsWith("image/"))
+                    .sorted((fr1, fr2) -> fr1.uri().compareTo(fr2.uri()))
+                    .collect(Collectors.toList()));
 
-        // get all image records.
-        final List<FileRecord> records = new LinkedList<>(file2FileRecords.values().stream()
-            .filter(fr -> isParentUri(srcUri, fr.uri()))
-            .filter(fr -> fr.mime() != null)
-            .filter(fr -> fr.mime().startsWith("image/"))
-            .sorted((fr1, fr2) -> fr1.uri().compareTo(fr2.uri()))
-            .collect(Collectors.toList()));
+            System.out.println("Total number of images: " + records.size());
 
-        System.out.println("Total number of images: " + records.size());
-
-        final List<List<FileRecord>> grouped = groupByBaseFnameSimilarity(records);// new ArrayList<>();
+            final List<List<FileRecord>> grouped = groupByBaseFnameSimilarity(records);// new ArrayList<>();
 
 //        final ImageDisplay id = new ImageDisplay.Builder()
 //            .windowName("Rotated")
@@ -111,25 +99,26 @@ public class SlideshowGenerator {
 //            // .dim(new Size(640, 480))
 //            .build();
 
-        for(final var group: grouped) {
-            if(group.size() == 0)
-                continue;
+            for(final var group: grouped) {
+                if(group.size() == 0)
+                    continue;
 
-            if(group.size() < 2) {
-                copyForSlideshow(group.get(0), srcUri, dstDir, vfs, avoidMemMap);
-                continue;
-            }
+                if(group.size() < 2) {
+                    copyForSlideshow(group.get(0), srcUri, dstDir, vfs, avoidMemMap);
+                    continue;
+                }
 
-            // if there's a .CR2 (we'll use the mime type to check) and there's more than 2, we need to check.
-            final long largestSize = group.stream().mapToLong(f -> f.size()).max().orElse(0);
-            final var sorted = new ArrayList<>(group.stream()
-                .sorted((fr1, fr2) -> Long.compare(modifiedSize(fr2, largestSize), modifiedSize(fr1, largestSize)))
-                .collect(Collectors.toList()));
+                // if there's a .CR2 (we'll use the mime type to check) and there's more than 2, we need to check.
+                final long largestSize = group.stream().mapToLong(f -> f.size()).max().orElse(0);
+                final var sorted = new ArrayList<>(group.stream()
+                    .sorted((fr1, fr2) -> Long.compare(modifiedSize(fr2, largestSize), modifiedSize(fr1, largestSize)))
+                    .collect(Collectors.toList()));
 
-            final FileRecord[] toCopy = selectImagesFromGroup(sorted, 0.99, vfs, avoidMemMap);
-            if(toCopy != null && toCopy.length > 0) {
-                Arrays.stream(toCopy)
-                    .forEach(fr -> uncheck(() -> copyForSlideshow(fr, srcUri, dstDir, vfs, avoidMemMap)));
+                final FileRecord[] toCopy = selectImagesFromGroup(sorted, 0.99, vfs, avoidMemMap);
+                if(toCopy != null && toCopy.length > 0) {
+                    Arrays.stream(toCopy)
+                        .forEach(fr -> uncheck(() -> copyForSlideshow(fr, srcUri, dstDir, vfs, avoidMemMap)));
+                }
             }
         }
     }
