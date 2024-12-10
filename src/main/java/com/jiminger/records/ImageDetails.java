@@ -1,23 +1,36 @@
 package com.jiminger.records;
 
-import static com.jiminger.utils.ImageUtils.DONT_RESIZE;
 import static net.dempsy.util.Functional.uncheck;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jiminger.utils.FileAccess;
 import com.jiminger.utils.ImageUtils;
+import com.jiminger.utils.ImageUtils.Dims;
 import com.jiminger.utils.Sci;
 
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 
 import net.dempsy.serialization.jackson.JsonUtils;
+import net.dempsy.vfs.FileSpec;
+import net.dempsy.vfs.Vfs;
 
 public record ImageDetails(int rows, int cols, int channels, float[] histogram) {
+
+    public static void main(final String[] args) throws Exception {
+        try(Vfs vfs = new Vfs();
+            final FileAccess fa = new FileAccess(new FileSpec(vfs.toPath(URI.create("file:/share/Media/GingerCameraBackup/DCIM/100CANON/IMG_0252.CR2"))),
+                false);) {
+            final var id = checkImageDetails(fa, null, null);
+            System.out.println(id);
+        }
+    }
 
     public static final String KEY = "image_details";
     private static ObjectMapper om = JsonUtils.makeStandardObjectMapper();
@@ -43,9 +56,7 @@ public record ImageDetails(int rows, int cols, int channels, float[] histogram) 
         for(int i = 0; i < h.length; i++)
             if(h[i] != 0.0f)
                 return false;
-        System.out.println("ALL ZERO :");
         return true;
-
     }
 
     public static ImageDetails getFrom(final FileRecord fr) {
@@ -69,17 +80,17 @@ public record ImageDetails(int rows, int cols, int channels, float[] histogram) 
             uncheck(() -> om.writeValueAsString(fr)));
     }
 
-    public static ImageDetails calculate(final Mat img) {
-        return new ImageDetails(img.rows(), img.cols(), img.channels(),
-            Sci.computeNormalizedHistogram(img, HIST_NUM_BINS, NORM_MIN_MAX_LOW, NORM_MIN_MAX_HIGH));
+    public static ImageDetails calculate(final Dims dims, final Mat img, final boolean canDisposeOfImage) {
+        return new ImageDetails(dims.rows(), dims.cols(), CvType.channels(dims.type()),
+            Sci.computeNormalizedHistogram(img, HIST_NUM_BINS, NORM_MIN_MAX_LOW, NORM_MIN_MAX_HIGH, canDisposeOfImage));
     }
 
     public static ImageDetails checkImageDetails(final FileAccess fSpec, final FileRecord existingFr, final PrintWriter failed) throws IOException {
         if(ImageUtils.isDecodableImage(fSpec) && !ImageDetails.hasHistogram(existingFr)) {
-            try(var img = ImageUtils.loadImage(fSpec, DONT_RESIZE);) {
-                if(img == null || img.dataAddr() == 0L)
+            try(var limg = ImageUtils.loadImage(fSpec, 4096);) {
+                if(limg == null || limg.image().dataAddr() == 0L)
                     return null;
-                return ImageDetails.calculate(img);
+                return ImageDetails.calculate(limg.dims(), limg.image(), true);
             }
         }
         return null;

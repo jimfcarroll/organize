@@ -6,6 +6,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,12 +52,29 @@ public class FileAccess implements Closeable {
         return fSpec.uri();
     }
 
+    public MegaByteBuffer allocate(final long numBytes) throws IOException {
+        final File file = toFile();
+        if(file.exists())
+            throw new IllegalStateException("The file " + fSpec.uri() + " already exists.");
+
+        // Fill the file with zeros to reach the desired size
+        try(RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
+            raf.setLength(numBytes);
+        }
+
+        return mapFile(true);
+    }
+
     public boolean canMemoryMap() throws IOException {
         return !avoidMemMap && fSpec.supportsMemoryMap();
     }
 
     public MegaByteBuffer mapFile() throws IOException {
-        return getBbr().getBuffer();
+        return mapFile(false);
+    }
+
+    public MegaByteBuffer mapFile(final boolean writable) throws IOException {
+        return getBbr(writable).getBuffer();
     }
 
     public File toFile() throws IOException {
@@ -66,7 +84,7 @@ public class FileAccess implements Closeable {
     public InputStream getInputStream() throws IOException {
         if(!canMemoryMap())
             return add(fSpec.getStandardInputStream());
-        return add(new MegaByteBufferInputStream(getBbr().getBuffer()));
+        return add(new MegaByteBufferInputStream(getBbr(false).getBuffer()));
     }
 
     public QuietCloseable preserveHeader(final int size) {
@@ -114,7 +132,7 @@ public class FileAccess implements Closeable {
         return chain(is, i -> iss.add(i));
     }
 
-    private ByteBufferResource getBbr() throws IOException {
+    private ByteBufferResource getBbr(final boolean writable) throws IOException {
         if(bbr == null) {
             System.out.println("Opening " + fSpec.uri());
             if(!canMemoryMap())
@@ -122,8 +140,9 @@ public class FileAccess implements Closeable {
                     "Cannot request memory mapping on " + fSpec + " because "
                         + (avoidMemMap ? " memory mapping is disabled in the configuration." : " it's not supported by that uri."));
 
-            bbr = fSpec.mapFile();
+            bbr = fSpec.mapFile(writable);
         }
         return bbr;
     }
+
 }

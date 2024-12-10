@@ -1,0 +1,56 @@
+{
+  "dryRun": false,
+  "md5FileToWrite": "./md5.txt",
+  "md5FilesToRead_": [
+    "./md5s/md5-cur.txt"
+  ],
+  "md5RemainderFile_": "./md5-remainder.txt",
+  "verify": false,
+  "verifyCheckpointFile": "./md5-verify-checkout.txt",
+  "imageCorrelationsFileToWrite": "./image-correlations.txt",
+  "imageCorrelationsFilesToRead": [
+    "./old/image-correlations.txt",
+    "./old/image-correlations2.txt",
+    "./old/image-correlations3.txt"
+  ],
+  "maxImageDim": 4096,
+  "recurseIntoArchives": false,
+  "failedFile":"./verifiy-failures.txt",
+  "md5FileWriteLineBuffered": true,
+  "enableLocalFileCaching": false,
+  "directoriesToScan": [
+    { "root": "/share/Public", "path": "mybooklive-backup/code/third-party/pilecv4j/lib-image/src/test/resources/test-images/types/TYPE_0" }
+  ],
+  "directoriesToScan_": [
+    { "root": "/share/Media", "path": "consolidated" },
+
+    { "root": "/share/Media", "path": "2014-Linux-Laptop-HomeDir" },
+    { "root": "/share/Media", "path": "2017-PTC-jim-home" },
+    { "root": "/share/Media", "path": "Backup-Notes" },
+
+    { "root": "/share/Media", "path": "BigBackup-4T-Damaged" },
+    { "root": "/share/Media", "path": "Ext Gig" },
+    { "root": "/share/Media", "path": "ginger's backup" },
+    { "root": "/share/Media", "path": "GingerCameraBackup" },
+    { "root": "/share/Media", "path": "GingersHp" },
+    { "root": "/share/Media", "path": "Google-Download-2018" },
+    { "root": "/share/Media", "path": "media-nas-moved" },
+    { "root": "/share/Media", "path": "memoryCards" },
+    { "root": "/share/Media", "path": "Movies" },
+    { "root": "/share/Media", "path": "Music" },
+    { "root": "/share/Media", "path": "mybooklive" },
+    { "root": "/share/Media", "path": "Seagate Backup Plus Drive" },
+    { "root": "/share/Media", "path": "Seagate Expansion Drive" },
+    { "root": "/share/Media", "path": "to-merge-music" },
+
+    { "root": "/share/Public", "path": "jim-laptop-backup" },
+    { "root": "/share/Public", "path": "mybooklive-backup" },
+
+    { "root": "/share/Elements", "path": "Music" },
+    { "root": "/share/Elements", "path": "backups" },
+    { "root": "/share/Elements", "path": "move" },
+
+    { "root": "/share/Elements-1/qnapBackups", "path": "Media" },
+    { "root": "/share/Elements-1/qnapBackups", "path": "Public" }
+  ]
+}

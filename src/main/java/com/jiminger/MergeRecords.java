@@ -2,7 +2,7 @@ package com.jiminger;
 
 import static com.jiminger.Config.FILE_RECORD_FILE_TO_WRITE;
 import static com.jiminger.VfsConfig.createVfs;
-import static com.jiminger.records.FileRecord.makeFileRecordsManager;
+import static com.jiminger.records.FileRecordMmDb.makeFileRecordsManager;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -16,7 +16,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jiminger.records.FileRecord;
-import com.jiminger.records.FileRecord.Manager;
+import com.jiminger.records.FileRecordMmDb;
 
 import net.dempsy.util.MutableInt;
 import net.dempsy.vfs.Vfs;
@@ -49,7 +49,7 @@ public class MergeRecords {
 
             System.out.println("Reading file records.");
 
-            try(final Manager frs = makeFileRecordsManager(vfs, md5FileToWrite, md5FilesToRead);) {
+            try(final FileRecordMmDb frs = makeFileRecordsManager(vfs, md5FileToWrite, md5FilesToRead);) {
 
                 System.out.println("Merging " + frs.size() + " file records.");
                 // collapse the list.

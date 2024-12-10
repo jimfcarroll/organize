@@ -113,9 +113,6 @@ public class Utils {
         List<FileRecord> curGroup = new ArrayList<>();
         for(final var cur: records) {
             final String curFilename = filenameNoExtention(cur.uri().toString());
-            if(curFilename.equals("file:/share/Media/consolidated/Family%20Media/Pictures/Scans%20Dufor%20and%20Torgan/Image%2032.dng")) {
-                System.out.println();
-            }
             if(matchFname == null) {
                 // ==================
                 matchFname = curFilename;

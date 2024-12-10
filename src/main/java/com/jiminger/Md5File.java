@@ -1,7 +1,7 @@
 package com.jiminger;
 
 import static com.jiminger.VfsConfig.createVfs;
-import static com.jiminger.records.FileRecord.makeFileRecordsManager;
+import static com.jiminger.records.FileRecordLmdb.makeFileRecordsManager;
 import static net.dempsy.util.Functional.chain;
 import static net.dempsy.util.Functional.recheck;
 import static net.dempsy.util.Functional.uncheck;
@@ -22,7 +22,7 @@ import java.util.function.Predicate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jiminger.Config.FileReference;
 import com.jiminger.records.FileRecord;
-import com.jiminger.records.FileRecord.Manager;
+import com.jiminger.records.FileRecordDb;
 import com.jiminger.records.ImageDetails;
 import com.jiminger.utils.FileAccess;
 import com.jiminger.utils.MD5;
@@ -83,47 +83,58 @@ public class Md5File {
         if(verify && md5FileToWriteExists)
             throw new IllegalArgumentException("Cannot set Md5File to verify but have a file that exists for the md5FileToWrite(" + md5FileToWrite + ")");
 
-        final Manager file2FileRecords = makeFileRecordsManager(vfs, md5FileToWrite, md5FilesToRead);
-
-        final Manager verifyManager = (verify && verifyCheckpointFile != null) ? makeFileRecordsManager(vfs, verifyCheckpointFile, new String[0]) : null;
+        // if we're verifying then the failed file should not already exist.
+        if(verify && new File(failedFile).exists())
+            throw new IllegalArgumentException("Cannot set Md5File to verify but have an existing file to write failures to (" + failedFile + ")");
 
         final File md5File = new File(md5FileToWrite);
         if(failedFile != null)
             System.out.println("Writing errors to: " + failedFile);
-        try(PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile)))
-            : new PrintWriter(System.err);
-            PrintWriter md5os = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File)));
-            PrintWriter verifyCheckpointOs = verify && verifyCheckpointFile != null
-                ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(verifyCheckpointFile)))
-                : null;) {
 
-            final long startTime = System.currentTimeMillis();
-            // pass to calc md5
-            recheck(() -> Arrays.stream(directoriesToScan)
-                .map(fr -> fr.uri())
-                .forEach(uri -> uncheck(() -> {
-                    try(var sub = vfs.operation();) {
-                        final Path path = sub.toPath(uri);
-                        doMd5(md5os, failed, new FileSpec(path), file2FileRecords, deleteEmtyDirs, md5FileFilter, lineBuffered, sub, recurseIntoArchives,
-                            avoidMemMap, verify, verifyCheckpointOs, verifyManager);
-                    }
-                })));
+        final long startTime = System.currentTimeMillis();
+
+        try(final var file2FileRecords = makeFileRecordsManager(vfs, md5FileToWrite, md5FilesToRead);
+            final var verifyManager = (verify && verifyCheckpointFile != null) ? makeFileRecordsManager(vfs, verifyCheckpointFile, new String[0]) : null;) {
+
+            try(final PrintWriter failed = (failedFile != null) ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(failedFile)))
+                : new PrintWriter(System.err);
+                final PrintWriter md5os = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5File)));
+                final PrintWriter verifyCheckpointOs = (verify && verifyCheckpointFile != null)
+                    ? new PrintWriter(new BufferedOutputStream(new FileOutputStream(verifyCheckpointFile)))
+                    : null;) {
+
+                // pass to calc md5
+                recheck(() -> Arrays.stream(directoriesToScan)
+                    .map(fr -> fr.uri())
+                    .forEach(uri -> uncheck(() -> {
+                        try(var sub = vfs.operation();) {
+                            final Path path = sub.toPath(uri);
+                            doMd5(md5os, failed, new FileSpec(path), file2FileRecords, deleteEmtyDirs, md5FileFilter, lineBuffered, sub, recurseIntoArchives,
+                                avoidMemMap, verify, verifyCheckpointOs, verifyManager);
+                        }
+                    })));
+
+            }
 
             if(md5RemainderFile != null) {
                 System.out.println("Writing " + file2FileRecords.size() + " remaining entries to " + md5RemainderFile);
-                try(PrintWriter remainderPw = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5RemainderFile)));) {
-                    file2FileRecords.stream().forEach(fr -> uncheck(() -> remainderPw.println(om.writeValueAsString(fr))));
+                // need to build a Db over the newly written md5 file
+                try(var newFrDb = makeFileRecordsManager(vfs, null, new String[] {md5FileToWrite});
+                    PrintWriter remainderPw = new PrintWriter(new BufferedOutputStream(new FileOutputStream(md5RemainderFile)));) {
+
+                    file2FileRecords.stream()
+                        .filter(fr -> uncheck(() -> newFrDb.find(fr.uri())) == null)
+                        .forEach(fr -> uncheck(() -> remainderPw.println(om.writeValueAsString(fr))));
                 }
             }
-
-            System.out.println("Finished Clean: " + (System.currentTimeMillis() - startTime) + " millis");
         }
+        System.out.println("Finished Clean: " + (System.currentTimeMillis() - startTime) + " millis");
     }
 
-    private static void doMd5(final PrintWriter md5os, final PrintWriter failed, final FileSpec fSpec, final Manager existing, final boolean deleteEmtyDirs,
-        final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered, final OpContext oc, final boolean recurseIntoArchives, final boolean avoidMemMap,
-        final boolean verify, final PrintWriter verifyCheckpointOs, final Manager verifyManager) throws IOException {
-
+    private static void doMd5(final PrintWriter md5os, final PrintWriter failed, final FileSpec fSpec, final FileRecordDb existing,
+        final boolean deleteEmtyDirs, final Predicate<FileSpec> md5FileFilter, final boolean lineBuffered, final OpContext oc,
+        final boolean recurseIntoArchives, final boolean avoidMemMap, final boolean verify, final PrintWriter verifyCheckpointOs,
+        final FileRecordDb verifyManager) throws IOException {
         if(skip.contains(UriUtils.getName(fSpec.uri().getPath()))) {
             System.out.println("SKIPPING: " + fSpec.uri());
             return;
@@ -199,7 +210,7 @@ public class Md5File {
                                 verifyCheckpointOs.flush();
                         }
                     } else {
-                        existing.remove(fr.uri());
+                        // existing.remove(fr.uri());
                         md5os.println(om.writeValueAsString(fr));
                     }
 

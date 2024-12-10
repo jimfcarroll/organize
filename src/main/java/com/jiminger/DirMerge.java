@@ -3,7 +3,7 @@ package com.jiminger;
 import static com.jiminger.VfsConfig.createVfs;
 import static com.jiminger.records.FileRecord.childrenOf;
 import static com.jiminger.records.FileRecord.groupByMd5;
-import static com.jiminger.records.FileRecord.makeFileRecordsManager;
+import static com.jiminger.records.FileRecordMmDb.makeFileRecordsManager;
 import static com.jiminger.utils.Utils.isParentUri;
 
 import java.io.File;

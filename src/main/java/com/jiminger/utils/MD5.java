@@ -3,6 +3,7 @@ package com.jiminger.utils;
 import static net.dempsy.util.Functional.uncheck;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 
@@ -32,5 +33,10 @@ public class MD5 {
         mbb.streamOfByteBuffers()
             .forEach(bb -> md.update(bb));
         return md.digest();
+    }
+
+    public static byte[] hash(final String str, final Charset charSet) {
+        final MessageDigest md = uncheck(() -> MessageDigest.getInstance("MD5"));
+        return md.digest(str.getBytes(charSet));
     }
 }

@@ -214,13 +214,15 @@ public class ImageCorrelator {
             final Supplier<CvMat> getRefMat = () -> {
                 if(refMatX.ref == null) {
                     System.out.println("LODING:" + fa.uri());
-                    refMatX.ref = uncheck(() -> closer.add(ImageUtils.loadImage(fa, maxImageSize)));
+                    refMatX.ref = uncheck(() -> closer.add(ImageUtils.loadImage(fa, maxImageSize))).image();
                 }
                 return refMatX.ref;
             };
 
             final List<CorrelatesWith> cws = new ArrayList<>();
-            for(final var c: candidates.getValue()) {
+            final var candidateCws = candidates.getValue();
+            for(int i = 0; i < candidateCws.length; i++) {
+                final var c = candidateCws[i];
                 final URI curUri = c.uri();
 
                 final ImageCorrelation existing = find(ims, md5s, mainUri, curUri);
@@ -233,8 +235,8 @@ public class ImageCorrelator {
                         if(cfa.toFile().exists()) {
                             try(var against = ImageUtils.loadImage(cfa, maxImageSize);) {
 
-                                final float coef = (float)Sci.correlationCoef(getRefMat.get(), against, true, ImageDetails.NORM_MIN_MAX_LOW,
-                                    ImageDetails.NORM_MIN_MAX_HIGH);
+                                final float coef = (float)Sci.correlationCoef(getRefMat.get(), against.image(), true, ImageDetails.NORM_MIN_MAX_LOW,
+                                    ImageDetails.NORM_MIN_MAX_HIGH, i == (candidateCws.length - 1), true);
                                 cws.add(new CorrelatesWith(curUri, coef));
                             }
                         }

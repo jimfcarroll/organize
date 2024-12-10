@@ -5,7 +5,6 @@ import static net.dempsy.util.Functional.chain;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -54,8 +53,7 @@ public class Sci {
     }
 
     public static List<ImageMatch> matches(final FileRecord cMain, final List<FileRecord> sorted, final Vfs vfs, final boolean avoidMemMap, final int maxDim,
-        final boolean normalizeChannels, final double alpha, final double beta)
-        throws ImageProcessingException, IOException, URISyntaxException {
+        final boolean normalizeChannels, final double alpha, final double beta) throws ImageProcessingException, IOException, URISyntaxException {
 
         if(cMain == null || sorted == null || sorted.size() == 0)
             return Collections.emptyList();
@@ -76,7 +74,9 @@ public class Sci {
                     if(mat == null || mat.dataAddr() == 0L)
                         continue;
 
-                    final double cc = correlationCoef(mainMat, mat, normalizeChannels, alpha, beta);
+                    final double cc = correlationCoef(mainMat, mat, normalizeChannels, alpha, beta,
+                        i == (sorted.size() - 1), // we can delete the source image if we're on the last corr coef calc
+                        true);
                     matches.add(new ImageMatch(cc, curFr));
                 }
             }
@@ -84,8 +84,8 @@ public class Sci {
         }
     }
 
-    private static CvMat convertIfNeeded(final Mat toConvert, final Mat reference) {
-        if(toConvert.type() == reference.type()) {
+    private static CvMat convertIfNeeded(final Mat toConvert, final int referenceType, final boolean canDisposeOfImage) {
+        if(toConvert.type() == referenceType) {
             final var depth = toConvert.depth();
             if(depth == CvType.CV_8U || depth == CvType.CV_32F)
                 return CvMat.shallowCopy(toConvert);
@@ -95,18 +95,19 @@ public class Sci {
             }
         }
         // if the number of channels are the same then just convert to F32.
-        if(toConvert.channels() == reference.channels()) {
+        if(toConvert.channels() == CvType.channels(referenceType)) {
             try(CvMat ret = chain(new CvMat(), m -> toConvert.convertTo(m, CvType.CV_32F));) {
                 return ret.returnMe();
             }
         }
         // okay, the depth is different. We need to convert them both to C1 F32.
-        try(CvMat ret = sumThenNormalizeChannels(toConvert, 0.0, 1.0);) {
+        try(CvMat ret = sumThenNormalizeChannels(toConvert, 0.0, 1.0, canDisposeOfImage);) {
             return ret.returnMe();
         }
     }
 
-    public static double correlationCoef(final CvMat mat1p, final CvMat mat2p, final boolean normalizeChannels, final double alpha, final double beta) {
+    public static double correlationCoef(final CvMat mat1p, final CvMat mat2p, final boolean normalizeChannels, final double alpha, final double beta,
+        final boolean canDisposeOfImage1, final boolean canDisposeOfImage2) {
         try(Closer outer = new Closer();) {
             final CvMat nimg1;
             final CvMat nimg2;
@@ -115,8 +116,10 @@ public class Sci {
                 final CvMat img2;
 
                 // Ensure images are of the same size
-                try(CvMat mat1 = convertIfNeeded(mat1p, mat2p);
-                    CvMat mat2 = convertIfNeeded(mat2p, mat1p);) {
+                final int mat1pType = mat1p.type();
+                final int mat2pType = mat2p.type();
+                try(CvMat mat1 = convertIfNeeded(mat1p, mat2pType, canDisposeOfImage1);
+                    CvMat mat2 = convertIfNeeded(mat2p, mat1pType, canDisposeOfImage2);) {
 
                     if(!mat1.size().equals(mat2.size())) {
                         final CvMat larger = mat1.total() > mat2.total() ? mat1 : mat2;
@@ -156,16 +159,17 @@ public class Sci {
         }
     }
 
-    public static double correlationCoef(final CvMat[] mains, final CvMat mat, final boolean normalizeChannels, final double alpha, final double beta) {
-        return Arrays.stream(mains)
-            .mapToDouble(m -> correlationCoef(m, mat, normalizeChannels, alpha, beta))
-            .max()
-            .orElse(0);
-    }
+//    public static double correlationCoef(final CvMat[] mains, final CvMat mat, final boolean normalizeChannels, final double alpha, final double beta) {
+//        return Arrays.stream(mains)
+//            .mapToDouble(m -> correlationCoef(m, mat, normalizeChannels, alpha, beta, canDisposeOfImage))
+//            .max()
+//            .orElse(0);
+//    }
 
-    public static float[] computeNormalizedHistogram(final Mat image, final int numBins, final double alpha, final double beta) {
+    public static float[] computeNormalizedHistogram(final Mat image, final int numBins, final double alpha, final double beta,
+        final boolean canDisposeOfImage) {
 
-        try(var histMat = computeNormalizedHistogramAsMat(image, numBins, alpha, beta);
+        try(var histMat = computeNormalizedHistogramAsMat(image, numBins, alpha, beta, canDisposeOfImage);
             Closer closer = new Closer();) {
             // Check if the input Mat has 3 channels
             if(histMat.rows() != numBins || histMat.cols() != 1 && histMat.channels() != 1)
@@ -183,9 +187,10 @@ public class Sci {
         }
     }
 
-    public static CvMat computeNormalizedHistogramAsMat(final Mat image, final int numBins, final double alpha, final double beta) {
+    public static CvMat computeNormalizedHistogramAsMat(final Mat image, final int numBins, final double alpha, final double beta,
+        final boolean canDisposeOfImage) {
         try(final CvMat hist = new CvMat();
-            final CvMat fimage = sumThenNormalizeChannels(image, alpha, beta);
+            final CvMat fimage = sumThenNormalizeChannels(image, alpha, beta, canDisposeOfImage);
             var c = new Closer();) {
 
             final MatOfInt histSize = c.addMat(new MatOfInt(numBins));
@@ -202,7 +207,6 @@ public class Sci {
 
             // Normalize the histogram
             Core.normalize(hist, hist, 0, 1, Core.NORM_MINMAX);
-
             return hist.returnMe();
         }
     }
@@ -261,38 +265,28 @@ public class Sci {
         }
     }
 
-    private static CvMat sumThenNormalizeChannels(final Mat image, final double alpha, final double beta) {
+    private static final int[] ORIGIN = new int[] {0,0};
+
+    private static CvMat sumThenNormalizeChannels(final Mat image, final double alpha, final double beta, final boolean canDisposeOfImage) {
         // Ensure the image has multiple channels
         if(image.channels() == 1) {
-            try(var fmat = new CvMat();) {
-                if(image.type() == CvType.CV_32F) {
-                    Core.normalize(image, fmat, alpha, beta, Core.NORM_MINMAX, CvType.CV_32F);
-                    return fmat.returnMe();
-                }
-                image.convertTo(fmat, CvType.CV_32F);
-                Core.normalize(fmat, fmat, alpha, beta, Core.NORM_MINMAX, CvType.CV_32F);
+            try(var fmat = new CvMat();
+                var toUse = canDisposeOfImage ? CvMat.move(image) : CvMat.shallowCopy(image);) {
+                Core.normalize(toUse, fmat, alpha, beta, Core.NORM_MINMAX, CvType.CV_32F);
                 return fmat.returnMe();
             }
         }
 
-        try(Closer closer = new Closer();
-            var sum = new CvMat();) {
-
-            // Split the image into individual channels
-            final List<Mat> channels = new ArrayList<>();
-            Core.split(image, channels);
-            channels.forEach(c -> closer.addMat(c));
-
-            channels.get(0).convertTo(sum, CvType.CV_32F);
-            for(int i = 1; i < channels.size(); i++) {
-                try(final CvMat floatChannel = new CvMat();) {
-                    channels.get(i).convertTo(floatChannel, CvType.CV_32F);
-                    Core.add(sum, floatChannel, sum);
-                }
-            }
-
+        // we're going to try to do this in a mem efficient manner.
+        try(CvMat weightsMat = new CvMat(1, image.channels(), CvType.CV_32FC1);
+            CvMat src = canDisposeOfImage ? CvMat.move(image) : CvMat.shallowCopy(image);
+            CvMat sum = new CvMat();) {
+            final double[] weights = new double[src.channels()];
+            for(int i = 0; i < weights.length; i++)
+                weights[i] = 1.0 / weights.length;
+            weightsMat.put(ORIGIN, weights);
+            Core.transform(src, sum, weightsMat);
             Core.normalize(sum, sum, alpha, beta, Core.NORM_MINMAX, CvType.CV_32F);
-
             return sum.returnMe();
         }
     }

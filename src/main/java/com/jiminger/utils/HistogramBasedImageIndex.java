@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 import com.jiminger.records.CorrelatesWith;
 import com.jiminger.records.FileRecord;
 import com.jiminger.records.ImageDetails;
+import com.jiminger.utils.ImageUtils.Dims;
 
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.opencv.core.Core;
@@ -114,10 +115,10 @@ public class HistogramBasedImageIndex implements QuietCloseable {
             histograms.get(refIndex.intValue(), 0, refHist);
             return _match(refHist, threshold, maxNum, refIndex.intValue());
         }
-        try(CvMat mat = ImageUtils.loadImage(ref, DONT_RESIZE);) {
-            if(mat == null || mat.dataAddr() == 0L)
+        try(var lmat = ImageUtils.loadImage(ref, DONT_RESIZE);) {
+            if(lmat == null || lmat.image().dataAddr() == 0L)
                 throw new IllegalStateException("Mat created from " + ref + " is invalid.");
-            return _match(ref.uri(), mat, threshold, maxNum);
+            return _match(ref.uri(), lmat.image(), threshold, maxNum, true);
         }
     }
 
@@ -197,8 +198,8 @@ public class HistogramBasedImageIndex implements QuietCloseable {
             .toArray(CorrelatesWith[]::new);
     }
 
-    private CorrelatesWith[] _match(final URI path, final Mat toSearchFor, final float threshold, final int maxNum) {
-        final ImageDetails id = ImageDetails.calculate(toSearchFor);
+    private CorrelatesWith[] _match(final URI path, final Mat toSearchFor, final float threshold, final int maxNum, final boolean canDisposeOfImage) {
+        final ImageDetails id = ImageDetails.calculate(Dims.make(toSearchFor), toSearchFor, canDisposeOfImage);
         return _match(id.histogram(), threshold, maxNum, -1);
     }
 

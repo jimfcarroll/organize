@@ -1,7 +1,7 @@
 package com.jiminger;
 
 import static com.jiminger.VfsConfig.createVfs;
-import static com.jiminger.records.FileRecord.makeFileRecordsManager;
+import static com.jiminger.records.FileRecordMmDb.makeFileRecordsManager;
 import static com.jiminger.utils.ImageUtils.DONT_RESIZE;
 import static com.jiminger.utils.ImageUtils.loadImageWithCorrectOrientation;
 import static com.jiminger.utils.Utils.groupByBaseFnameSimilarity;
@@ -114,7 +114,7 @@ public class SlideshowGenerator {
                     .sorted((fr1, fr2) -> Long.compare(modifiedSize(fr2, largestSize), modifiedSize(fr1, largestSize)))
                     .collect(Collectors.toList()));
 
-                final FileRecord[] toCopy = selectImagesFromGroup(sorted, 0.99, vfs, avoidMemMap);
+                final FileRecord[] toCopy = selectImagesFromGroup(sorted, 0.99, vfs, avoidMemMap, true);
                 if(toCopy != null && toCopy.length > 0) {
                     Arrays.stream(toCopy)
                         .forEach(fr -> uncheck(() -> copyForSlideshow(fr, srcUri, dstDir, vfs, avoidMemMap)));
@@ -123,22 +123,34 @@ public class SlideshowGenerator {
         }
     }
 
-    private static double[][] correlationMatric(final List<FileRecord> src, final Vfs vfs, final boolean avoidMemMap) {
+    private static double[][] correlationMatric(final List<FileRecord> src, final Vfs vfs, final boolean avoidMemMap, final boolean memoryCompact)
+        throws IOException, ImageProcessingException {
         try(final Closer closer = new Closer();) {
-            final CvMat[] mats = src.stream()
-                .map(fr -> uncheck(() -> closer.add(fr.fileAccess(vfs, avoidMemMap))))
-                .map(fr -> closer.add(uncheck(() -> loadImageWithCorrectOrientation(fr, DONT_RESIZE))))
-                .toArray(CvMat[]::new);
+            final CvMat[] mats = memoryCompact ? null
+                : src.stream()
+                    .map(fr -> uncheck(() -> closer.add(fr.fileAccess(vfs, avoidMemMap))))
+                    .map(fr -> closer.add(uncheck(() -> loadImageWithCorrectOrientation(fr, DONT_RESIZE))))
+                    .toArray(CvMat[]::new);
 
+            // This is a problem since it will reload the same images multiple times.
             final double[][] ret = new double[src.size()][src.size()];
+            final var frs = src.toArray(FileRecord[]::new);
             for(int i = 0; i < src.size(); i++) {
-                for(int j = i + 1; j < src.size(); j++) {
-                    final CvMat m1 = mats[i];
-                    final CvMat m2 = mats[j];
-                    if(m1 == null || m2 == null)
-                        ret[i][j] = 0.0;
-                    else
-                        ret[i][j] = Sci.correlationCoef(m1, m2, true, ImageDetails.NORM_MIN_MAX_LOW, ImageDetails.NORM_MIN_MAX_HIGH);
+                try(final CvMat m1 = memoryCompact ? loadImageWithCorrectOrientation(frs[i].fileAccess(vfs, avoidMemMap), DONT_RESIZE)
+                    : CvMat.shallowCopy(mats[i]);) {
+
+                    for(int j = i + 1; j < src.size(); j++) {
+                        try(CvMat m2 = memoryCompact ? loadImageWithCorrectOrientation(frs[i].fileAccess(vfs, avoidMemMap), DONT_RESIZE)
+                            : CvMat.shallowCopy(mats[j]);) {
+
+                            if(m1 == null || m2 == null)
+                                ret[i][j] = 0.0;
+                            else
+                                ret[i][j] = Sci.correlationCoef(m1, m2, true, ImageDetails.NORM_MIN_MAX_LOW, ImageDetails.NORM_MIN_MAX_HIGH,
+                                    memoryCompact ? i == (frs.length - 1) : false,
+                                    memoryCompact ? true : false);
+                        }
+                    }
                 }
             }
             // fill in the rest
@@ -153,8 +165,9 @@ public class SlideshowGenerator {
         }
     }
 
-    private static FileRecord[] selectImagesFromGroup(final List<FileRecord> selectFrom, final double thresh, final Vfs vfs, final boolean avoidMemMap) {
-        final double[][] corrMat = correlationMatric(selectFrom, vfs, avoidMemMap);
+    private static FileRecord[] selectImagesFromGroup(final List<FileRecord> selectFrom, final double thresh, final Vfs vfs, final boolean avoidMemMap,
+        final boolean memoryEfficient) throws IOException, ImageProcessingException {
+        final double[][] corrMat = correlationMatric(selectFrom, vfs, avoidMemMap, memoryEfficient);
         // anywhere there's a high enough corellation between 2 or more images, they will be considered the same image.
         @SuppressWarnings("unchecked")
         final Set<Integer>[] comb = new Set[selectFrom.size()];
@@ -268,7 +281,7 @@ public class SlideshowGenerator {
                 destFile.getParentFile().mkdirs();
                 uncheck(() -> Files.copy(sourcePath, destFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES));
             } else {
-                try(CvMat resized = ImageUtils.resizeIfTooLarge(mat, 1080, 1920);) {
+                try(CvMat resized = ImageUtils.resizeIfTooLarge(mat, 1080, 1920, true);) {
                     System.out.println("Copying resized image from " + toCopy.uri() + " to " + destFile);
                     destFile.getParentFile().mkdirs();
                     ImageFile.writeImageFile(resized, destFile.getAbsolutePath());
