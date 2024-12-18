@@ -1,6 +1,5 @@
 package com.jiminger.records;
 
-import static com.jiminger.utils.Utils.isParentUri;
 import static net.dempsy.util.Functional.chain;
 import static net.dempsy.util.Functional.uncheck;
 
@@ -16,7 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -94,68 +92,6 @@ public record FileRecord(URI uri, long size, String mime, long lastModifiedTime,
                     .toArray(String[]::new));
     }
 
-//    public static List<FileRecord> readFileRecords(final String[] fileNames, final Predicate<FileRecord> filter) throws IOException {
-//
-//        final List<FileRecord> ret = new ArrayList<>();
-//        recheck(() -> Arrays.stream(fileNames).forEach(fileName -> uncheck(() -> {
-//            final File file = new File(fileName);
-//            if(file.exists()) {
-//                LOGGER.info("Reading {} ...", file);
-//                try(BufferedReader br = new BufferedReader(new FileReader(file));) {
-//                    for(String line = br.readLine(); line != null; line = br.readLine()) {
-//                        final var fr = fix(om.readValue(line, FileRecord.class));
-//                        if(filter == null || filter.test(fr))
-//                            ret.add(fr);
-//                    }
-//                }
-//            } else {
-//                LOGGER.warn("The file \"{}\" doesn't exist. Can't load specs from it. Please update the config.", fileName);
-//                throw new IllegalArgumentException("The file \"" + fileName + "\" doesn't exist. Can't load specs from it. Please update the config.");
-//            }
-//        })));
-//        return ret;
-//    }
-//
-//    public static List<FileRecord> readFileRecords(final String[] fileNames) throws IOException {
-//        return readFileRecords(fileNames, null);
-//    }
-//
-//    public static List<FileRecord> readFileRecords(final String md5FileToWrite, final String[] md5FilesToRead, final Predicate<FileRecord> filter)
-//        throws IOException {
-//        final boolean md5FileToWriteExists = md5FileToWrite == null ? false : new File(md5FileToWrite).exists();
-//
-//        return readFileRecords(
-//            (md5FileToWriteExists
-//                ? Stream.concat(Stream.of(md5FileToWrite), Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0])))
-//                : Arrays.stream(Optional.ofNullable(md5FilesToRead).orElse(new String[0])))
-//                    .toArray(String[]::new),
-//
-//            filter
-//
-//        );
-//    }
-//
-//    public static List<FileRecord> readFileRecords(final String md5FileToWrite, final String[] md5FilesToRead) throws IOException {
-//        return readFileRecords(md5FileToWrite, md5FilesToRead, null);
-//    }
-//
-//    public static Map<URI, FileRecord> mergedFileRecords(final String md5FileToWrite, final String[] md5FilesToRead, final Predicate<FileRecord> filter)
-//        throws IOException {
-//
-//        return readFileRecords(md5FileToWrite, md5FilesToRead, filter).stream()
-//            .collect(Collectors.toMap(fs -> fs.uri(), fs -> fs, (fr1, fr2) -> {
-//                // if(fr1.equals(fr2))
-//                if(fr1.md5().equals(fr2.md5()))
-//                    return fr2.additional() != null ? fr2 : fr1;
-//                throw new IllegalStateException("Duplicate keys for " + fr1 + " and " + fr2 + " that can't be merged.");
-//            }));
-//
-//    }
-//
-//    public static Map<URI, FileRecord> mergedFileRecords(final String md5FileToWrite, final String[] md5FilesToRead) throws IOException {
-//        return mergedFileRecords(md5FileToWrite, md5FilesToRead, null);
-//    }
-
     public static Map<String, List<FileRecord>> groupByMd5(final Collection<FileRecord> toGroup) {
         final Map<String, List<FileRecord>> ret = new HashMap<>((int)Math.ceil(toGroup.size() / 0.74));
         toGroup.forEach(fr -> ret.compute(fr.md5(), (k, v) -> {
@@ -164,12 +100,6 @@ public record FileRecord(URI uri, long size, String mime, long lastModifiedTime,
             return cur;
         }));
         return ret;
-    }
-
-    public static List<FileRecord> childrenOf(final URI parentURI, final FileRecordMmDb among) {
-        return among.stream()
-            .filter(cur -> isParentUri(parentURI, cur.uri()))
-            .collect(Collectors.toList());
     }
 
     public static ObjectMapper makeStandardObjectMapper() {

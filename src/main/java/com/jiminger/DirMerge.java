@@ -1,10 +1,9 @@
 package com.jiminger;
 
-import static com.jiminger.VfsConfig.createVfs;
-import static com.jiminger.records.FileRecord.childrenOf;
 import static com.jiminger.records.FileRecord.groupByMd5;
-import static com.jiminger.records.FileRecordMmDb.makeFileRecordsManager;
+import static com.jiminger.records.FileRecordLmdb.makeFileRecordsManager;
 import static com.jiminger.utils.Utils.isParentUri;
+import static net.dempsy.util.Functional.uncheck;
 
 import java.io.File;
 import java.io.PrintStream;
@@ -21,25 +20,30 @@ import java.util.stream.Stream;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jiminger.commands.DeleteCommand;
 import com.jiminger.records.FileRecord;
+import com.jiminger.records.FileRecordDb;
+import com.jiminger.records.FileRecordLmdb;
 
-import net.dempsy.vfs.Vfs;
+import net.dempsy.util.MutableInt;
 
 public class DirMerge {
 
-    private static Vfs vfs;
-
-    private static final long KB = 1024;
-    private static final long MEG = 1024 * KB;
-    private static final long GIG = 1024 * MEG;
+    private static final long KB = 1024L;
+    private static final long MB = 1024L * KB;
+    private static final long GB = 1024L * MB;
+    private static final long TB = 1024L * GB;
 
     private static ObjectMapper om = FileRecord.makeStandardObjectMapper();
 
+    private static double toTB(final long bytes) {
+        return (double)bytes / TB;
+    }
+
     private static double toGig(final long bytes) {
-        return (double)bytes / GIG;
+        return (double)bytes / GB;
     }
 
     private static double toMeg(final long bytes) {
-        return (double)bytes / MEG;
+        return (double)bytes / MB;
     }
 
     private static double toKB(final long bytes) {
@@ -47,9 +51,11 @@ public class DirMerge {
     }
 
     private static String humanReadable(final long bytes) {
-        if(bytes > GIG)
+        if(bytes > TB)
+            return String.format("%.2f TB", toTB(bytes));
+        if(bytes > GB)
             return String.format("%.2f GB", toGig(bytes));
-        if(bytes > MEG)
+        if(bytes > MB)
             return String.format("%.2f MB", toMeg(bytes));
         if(bytes > KB)
             return String.format("%.2f KB", toKB(bytes));
@@ -68,7 +74,6 @@ public class DirMerge {
             usage();
 
         final Config conf = Config.load(args[0]);
-        vfs = createVfs(conf.passwordsToTry);
 
         final String commandFileStr = args[1];
         try(final PrintStream commandOs = new PrintStream(new File(commandFileStr));) {
@@ -80,7 +85,7 @@ public class DirMerge {
                     .mapToObj(i -> args[i])
                     .toArray(String[]::new);
 
-            try(final var file2FileRecords = makeFileRecordsManager(vfs, conf.md5FileToWrite, conf.md5FilesToRead);) {
+            try(final var file2FileRecords = makeFileRecordsManager(conf.md5FileToWrite, conf.md5FilesToRead);) {
 
                 System.out.println("Separating children of " + srcDir + " from the overall set of file records.");
 
@@ -106,7 +111,7 @@ public class DirMerge {
 
                 System.out.println("Calculating overall savings for " + srcDir);
 
-                final Map<String, List<FileRecord>> md5ToOtherRecords = groupByMd5(others);
+                final FileRecordDb<String> md5ToOtherRecords = makeFileRecordsManager(new FileRecordLmdb.Md5Index(), conf.md5FileToWrite, conf.md5FilesToRead);
                 // now let's scan all of the other records to find matching md5s and see how much data would be saved by a merge.
                 long totalBytes = 0;
                 long numFiles = 0;
@@ -114,7 +119,7 @@ public class DirMerge {
                     if(fr.size() < 16)
                         System.out.println(fr.uri() + " is too small at " + fr.size());
                     else {
-                        final List<FileRecord> match = md5ToOtherRecords.get(fr.md5());
+                        final List<FileRecord> match = Arrays.asList(md5ToOtherRecords.find(fr.md5()));
                         if(match != null && match.size() > 0) {
                             numFiles += match.size();
                             totalBytes += fr.size() * match.size();
@@ -134,33 +139,33 @@ public class DirMerge {
                     System.out.println("======================================");
                     System.out.println(mergeDir);
                     System.out.println("======================================");
-//            final File merge1DirFile = vfs.toFile(new URI(mergeDir));
-//            final URI merge1Uri = merge1DirFile.toURI();
                     final URI merge1Uri = new URI(mergeDir);
-                    final List<FileRecord> merge1Records = childrenOf(merge1Uri, file2FileRecords);
 
                     final Map<String, List<FileRecord>> srcMd5ToRecord = groupByMd5(toMove);
-                    long bytesOverlap = 0;
-                    long numFilesOverlap = 0;
-                    long bytesExtra = 0;
-                    long numFilesExtra = 0;
-                    for(final var cur: merge1Records) {
-                        final var srcRecord = srcMd5ToRecord.get(cur.md5());
-                        if(srcRecord != null) {
-                            bytesOverlap += cur.size();
-                            numFilesOverlap++;
-                            commandOs.println(om.writeValueAsString(new DeleteCommand(DeleteCommand.TYPE, cur, srcRecord)));
-                        } else {
-                            System.out.println("Remaining: " + cur.uri());
-                            bytesExtra += cur.size();
-                            numFilesExtra++;
-                        }
-                    }
+                    final var bytesOverlap = new MutableInt(0);
+                    final var numFilesOverlap = new MutableInt(0);
+                    final var bytesExtra = new MutableInt(0);
+                    final var numFilesExtra = new MutableInt(0);
+                    file2FileRecords.stream()
+                        .filter(cur -> isParentUri(merge1Uri, cur.uri()))
+                        .forEach(cur -> uncheck(() -> {
+                            final var srcRecord = srcMd5ToRecord.get(cur.md5());
+                            if(srcRecord != null) {
+                                bytesOverlap.val += cur.size();
+                                numFilesOverlap.val++;
+                                commandOs.println(om.writeValueAsString(new DeleteCommand(DeleteCommand.TYPE, cur, srcRecord)));
+                            } else {
+                                System.out.println("Remaining: " + cur.uri());
+                                bytesExtra.val += cur.size();
+                                numFilesExtra.val++;
+                            }
+                        }));
 
                     System.out
-                        .println("After " + humanReadable(bytesOverlap) + " in " + numFilesOverlap + " files are merged, " + humanReadable(bytesExtra) + " in "
-                            + numFilesExtra + " files (" + String.format("%.2f", ((double)bytesExtra / (double)(bytesExtra + bytesOverlap)) * 100.0)
-                            + "%) will remain");
+                        .println(
+                            "After " + humanReadable(bytesOverlap.val) + " in " + numFilesOverlap.val + " files are merged, " + humanReadable(bytesExtra.val)
+                                + " in " + numFilesExtra.val + " files ("
+                                + String.format("%.2f", (bytesExtra.val / (double)(bytesExtra.val + bytesOverlap.val)) * 100.0) + "%) will remain");
                 }
             }
         }

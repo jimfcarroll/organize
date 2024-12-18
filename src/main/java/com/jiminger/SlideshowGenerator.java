@@ -1,7 +1,7 @@
 package com.jiminger;
 
 import static com.jiminger.VfsConfig.createVfs;
-import static com.jiminger.records.FileRecordMmDb.makeFileRecordsManager;
+import static com.jiminger.records.FileRecordLmdb.makeFileRecordsManager;
 import static com.jiminger.utils.ImageUtils.DONT_RESIZE;
 import static com.jiminger.utils.ImageUtils.loadImageWithCorrectOrientation;
 import static com.jiminger.utils.Utils.groupByBaseFnameSimilarity;
@@ -74,7 +74,7 @@ public class SlideshowGenerator {
             dstDir.delete();
         }
 
-        try(var file2FileRecords = makeFileRecordsManager(vfs, conf.md5FileToWrite, conf.md5FilesToRead);) {
+        try(var file2FileRecords = makeFileRecordsManager(conf.md5FileToWrite, conf.md5FilesToRead);) {
 
             // get all image records.
             final List<FileRecord> records = new LinkedList<>(

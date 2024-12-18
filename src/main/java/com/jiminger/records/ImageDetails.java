@@ -27,7 +27,7 @@ public record ImageDetails(int rows, int cols, int channels, float[] histogram) 
         try(Vfs vfs = new Vfs();
             final FileAccess fa = new FileAccess(new FileSpec(vfs.toPath(URI.create("file:/share/Media/GingerCameraBackup/DCIM/100CANON/IMG_0252.CR2"))),
                 false);) {
-            final var id = checkImageDetails(fa, null, null);
+            final var id = checkImageDetails(fa, null, null, null, null);
             System.out.println(id);
         }
     }
@@ -85,8 +85,21 @@ public record ImageDetails(int rows, int cols, int channels, float[] histogram) 
             Sci.computeNormalizedHistogram(img, HIST_NUM_BINS, NORM_MIN_MAX_LOW, NORM_MIN_MAX_HIGH, canDisposeOfImage));
     }
 
-    public static ImageDetails checkImageDetails(final FileAccess fSpec, final FileRecord existingFr, final PrintWriter failed) throws IOException {
+    public static ImageDetails checkImageDetails(final FileAccess fSpec, final FileRecord existingFr, final PrintWriter failed, final String md5,
+        final FileRecordDb<String> db) throws IOException {
         if(ImageUtils.isDecodableImage(fSpec) && !ImageDetails.hasHistogram(existingFr)) {
+            // before we load the image, see if we have it in the db.
+            final FileRecord[] matching = db.find(md5);
+            if(matching != null && matching.length > 0) {
+                // find one with a comlpete ImageDetails
+                final var hasIt = Arrays.stream(matching)
+                    .filter(fr -> ImageDetails.hasHistogram(fr))
+                    .findFirst()
+                    .orElse(null);
+
+                if(hasIt != null)
+                    return ImageDetails.getFrom(hasIt);
+            }
             try(var limg = ImageUtils.loadImage(fSpec, 4096);) {
                 if(limg == null || limg.image().dataAddr() == 0L)
                     return null;

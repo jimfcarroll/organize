@@ -137,7 +137,7 @@ public record ImageCorrelation(URI[] uris, float cc) {
             final int prevSize = 0;
             final URI curUri = uri;
             final Set<URI> alreadyChecked = new HashSet<>();
-            final Set<URI> toCheck = new HashSet<>();
+            // final Set<URI> toCheck = new HashSet<>();
             for(boolean done = false; !done;) {
                 final var cws = findAllAssociated(curUri);
                 cws.stream()

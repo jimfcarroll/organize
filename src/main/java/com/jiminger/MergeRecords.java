@@ -1,8 +1,7 @@
 package com.jiminger;
 
 import static com.jiminger.Config.FILE_RECORD_FILE_TO_WRITE;
-import static com.jiminger.VfsConfig.createVfs;
-import static com.jiminger.records.FileRecordMmDb.makeFileRecordsManager;
+import static com.jiminger.records.FileRecordLmdb.makeFileRecordsManager;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -16,14 +15,11 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jiminger.records.FileRecord;
-import com.jiminger.records.FileRecordMmDb;
+import com.jiminger.records.FileRecordDb;
 
 import net.dempsy.util.MutableInt;
-import net.dempsy.vfs.Vfs;
 
 public class MergeRecords {
-    private static Vfs vfs;
-
     public static void usage() {
         System.err.println("Usage: java -cp [classpath] " + MergeRecords.class.getName() + " path/to/config.json");
     }
@@ -36,7 +32,6 @@ public class MergeRecords {
             usage();
         else {
             final Config c = Config.load(args[0]);
-            vfs = createVfs(c.passwordsToTry);
 
             final String md5FileToWrite = c.md5FileToWrite;
             final String[] md5FilesToRead = c.md5FilesToRead;
@@ -49,7 +44,7 @@ public class MergeRecords {
 
             System.out.println("Reading file records.");
 
-            try(final FileRecordMmDb frs = makeFileRecordsManager(vfs, md5FileToWrite, md5FilesToRead);) {
+            try(final FileRecordDb<URI> frs = makeFileRecordsManager(md5FileToWrite, md5FilesToRead);) {
 
                 System.out.println("Merging " + frs.size() + " file records.");
                 // collapse the list.

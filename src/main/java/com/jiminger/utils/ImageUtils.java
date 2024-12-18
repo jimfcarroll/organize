@@ -438,7 +438,7 @@ public class ImageUtils {
             try(final ReaderAndStream ras = getNextReaderAndStream(f, cur)) {
                 if(ras != null) {
                     final ImageReader reader = ras.reader;
-                    try(QuietCloseable qc = () -> reader.dispose();) {
+                    try {
                         LOGGER.trace("IIO attempt {}. Using reader {} to read {} ", cur, reader, filename);
                         return new Dims(reader.getHeight(imageNumber), reader.getWidth(imageNumber), getCvTypeFromReader(reader, imageNumber));
                     } catch(final IndexOutOfBoundsException ioob) {
