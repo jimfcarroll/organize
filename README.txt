@@ -146,125 +146,527 @@ version: "3.1"
 nlu:
 - intent: ask_library_hours
   examples: |
-    - What are your hours of operation?
+    - What time do you open on Friday?
+    - Can I check your hours on the website?
+    - Do you open earlier during exams?
+    - Can I visit the library before work?
+    - Are you open from 8 AM to 8 PM?
+    - Are you open on Sunday?
+    - Do you stay open late for study groups?
+    - Is the library open until midnight?
+    - Is the library open during exam season?
+    - Can I visit the library after 8 PM?
     - When is the library open?
-    - Can you tell me your opening hours?
-    - What time do you open?
+    - When do you reopen after holidays?
+    - Is the library closed on Sunday?
+    - Are your hours reduced during holidays?
+    - Are you open late on Fridays?
+    - Is the library accessible after hours?
+    - What’s the earliest time I can come?
+    - Do you have reduced hours on holidays?
+    - Do the timings change on special occasions?
+    - When do you open on Saturday?
+    - Can I check the library hours on your website?
+    - What are the timings for the children’s section?
+    - Are you open on New Year’s Day?
+    - Can you tell me your closing hours?
+    - Are the hours the same during exams?
+    - Do you have special hours during workshops?
+    - Is the library open past 6 PM?
+    - Are you closed for Christmas?
+    - Do you open earlier on Sundays?
+    - Are you open past 9 PM?
+    - Do you have extended hours for students?
+    - Are there different hours for children?
+    - What are the operating hours?
+    - Are your opening hours different on holidays?
+    - What time do you close on public holidays?
+    - Is there a night shift at the library?
+    - Do you stay open late for special events?
+    - What time do you close tomorrow?
+    - Are you open during the weekend mornings?
     - What time do you close?
-    - Are you open today?
-    - Are you open now?
-    - When can I visit the library?
+    - Do you close early on New Year’s Eve?
+    - Do you open on national holidays?
+    - Are you open for 24 hours during finals week?
     - Is the library open on weekends?
-    - What are your holiday hours?
-    - Are you closed on holidays?
+    - Are your hours different for community members?
+    - Can I visit the library after 7 PM?
+    - When does the library close on Sunday?
+    - Is there a break time during the day?
+    - Can I check the library hours on your app?
+    - Can I visit the library early in the morning?
+    - What time do you open on weekdays?
+    - When does the library close today?
+    - Is the library open during inclement weather?
+    - Are the hours reduced in summer?
+    - Do you open late on weekends?
     - What time do you start in the morning?
+    - Are you open at 7 AM?
+    - Do you open late for events?
+    - When do the doors close today?
+    - Do you close early on rainy days?
+    - Can I come to the library after classes?
+    - Are your hours the same every day?
+    - Do you close early on weekends?
+    - Are the library hours fixed?
+    - Do you open during school holidays?
+    - Are there extended hours during projects?
+    - What time does the library open on Sundays?
+    - When is the best time to visit the library?
+    - Is the library closed on festival days?
+    - Do your hours differ for faculty?
+    - Can I visit the library on federal holidays?
+    - When is the earliest I can visit?
+    - Do you have different hours for students?
+    - Are there special visiting hours for members?
+    - Can you tell me your opening hours?
+    - Are you open on Memorial Day?
+    - Are the morning hours fixed?
+    - What are the hours for the study rooms?
+    - Can I visit the library at midnight?
+    - When does the library shut down for cleaning?
+    - Are there any special hours for events?
+    - Are you open before 8 AM?
+    - What time do you open on holidays?
+    - Can I visit at 10 PM?
+    - Do the timings vary for holidays?
+    - Is the library open at 5 AM?
+    - Are there any upcoming changes to your schedule?
+    - Can I come to the library now?
+    - Are you open on public holidays?
+    - Is the library open during lunch hours?
+    - Are your hours different in summer?
+    - What time should I visit the library?
+    - Are you open at night?
+    - Is there a different schedule during exams?
+    - Are your hours different for staff members?
+    - When can I visit the library?
+    - Do you have special hours during exams?
+    - Do you have reduced hours during winter?
+    - Are you open late during the holidays?
+    - Do you open earlier for members?
+    - Are you open during winter break?
+    - Are you closed on holidays?
+    - Are you open in the afternoon?
+    - Are the doors open 24 hours?
+    - Are you open for night owls?
+    - Do you close on Fridays?
+    - Are there separate hours for specific departments?
+    - Are you open on Christmas Day?
+    - Can I visit after lunch hours?
+    - Are you open during power outages?
+    - Can I check the library hours online?
+    - Do you have different timings for weekdays?
+    - Are there special hours for research students?
     - How late are you open?
     - Is the library open late at night?
-    - Can I come to the library now?
-    - When does the library close today?
-    - What time should I visit the library?
-    - Is there a special time for visitors?
-    - Do you have different hours for students?
-    - Are your hours the same every day?
-    - Are you open on Sunday?
-    - Is the library closed on Sunday?
-    - How early can I visit the library?
-    - What is the latest time I can visit?
-    - What are your daily hours?
-    - Is the library open past 6 PM?
-    - When do you open on Saturday?
-    - Are you open in the evening?
-    - What time do you close tomorrow?
-    - Can you tell me your closing hours?
-    - What are your weekday hours?
-    - Are you open on Monday?
-    - Are you closed on Fridays?
+    - Are you open before 9 AM?
+    - Do you open later on Sundays?
+    - Are your hours longer during summer?
+    - Are there any changes to your hours this week?
+    - Are you closed on special occasions?
+    - Are you open during the afternoons on weekends?
+    - When does the library open on Sundays?
+    - Are there special hours for kids?
+    - What are your hours of operation?
+    - Are your hours listed online?
     - What are the library hours today?
-    - Is the library open during lunch hours?
-    - Are your hours affected by holidays?
+    - What’s the opening time tomorrow?
+    - Are you open on Thanksgiving?
+    - Are you closed on Fridays?
+    - Can I enter after closing time?
+    - What time do you close during holidays?
+    - Are you open for evening study sessions?
+    - Are you open this weekend?
+    - Do you stay open late during finals week?
+    - Are you open on Monday?
+    - Do you open on public holidays?
+    - Do you close earlier in winter?
+    - What are your weekend hours?
     - Are you open 24/7?
-    - Can I visit the library after 8 PM?
-    - Is there a break time during the day?
-    - Are you open in the afternoon?
+    - What time do the doors shut?
+    - When does the library open tomorrow?
+    - Are you open at 10 PM?
+    - Are there special hours for holidays?
+    - Are you open during power cuts?
+    - What’s the last entry time?
+    - What time do you close on weekday evenings?
+    - Are you open in the evening?
+    - Is the library open on Saturday evenings?
+    - What are your operating hours?
+    - Do you have hours specifically for seniors?
+    - Are your hours different in the summer?
+    - Is there a special time for visitors?
+    - Can I come by at midnight?
+    - What are your weekday hours?
+    - Are you open late on weekends?
+    - Are you open today?
+    - What is the latest time I can visit?
+    - Is the library open in the morning?
+    - Is there a late-night reading hour?
+    - What are the study area hours?
+    - What are your daily hours?
+    - Can I visit the library after work?
+    - Do you open earlier on Saturdays?
+    - What time do you open?
+    - Do you close earlier in summer?
+    - Are you open during spring break?
+    - Are you open past 10 PM on weekends?
+    - When does the library reopen tomorrow?
+    - Do you have extended hours during exams?
+    - What are the weekend timings?
+    - Are your hours adjusted for COVID-19?
+    - When does the library open on Saturday?
+    - Is the library open for non-members?
+    - Can I come after 11 PM?
+    - Can I book a slot during lunch hours?
+    - Do you close for maintenance days?
+    - How late can I stay at the library?
+    - Do you close for lunch breaks?
+    - What are your holiday hours?
+    - Can I come to the library after 10 PM?
+    - Are the hours flexible?
+    - Do you open earlier on weekdays?
+    - What time do you close on weekdays?
+    - Are you open now?
+    - Do the timings change on weekends?
+    - Are your hours different for faculty members?
+    - Do your hours vary by location?
+    - Is there a break between shifts?
+    - Are you open on Independence Day?
+    - Are you open on weekends during exams?
+    - When do you close on holidays?
+    - Do you open earlier during peak seasons?
+    - Do you close early on Christmas Eve?
+    - What time do you close on weekends?
+    - Are you open till midnight?
+    - Are your hours affected by holidays?
+    - How early can I visit the library?
+    - Can I come at 11 PM?
+    - What time do you reopen after lunch?
+    - Can I reserve a time to visit the library?
+    - What is the earliest I can arrive?
+    - Do you close during national emergencies?
+    - When does the library reopen after holidays?
+    - Are you closed for lunch?
+    - When can I borrow books from the library?
+    - When can I access the library resources?
+    - Are you open during school holidays?
+    - Can I visit the library after school hours?
+    - Can I visit after 9 PM?
 
 - intent: search_book
   examples: |
-    - Do you have [1984](book_name)?
-    - Can I find [Pride and Prejudice](book_name) in your library?
-    - Is [The Catcher in the Rye](book_name) available?
-    - Do you have a copy of [To Kill a Mockingbird](book_name)?
-    - I’m looking for [The Great Gatsby](book_name).
-    - Do you have a book titled [Moby Dick](book_name)?
-    - Can I borrow [War and Peace](book_name)?
-    - Is [The Hobbit](book_name) in stock?
-    - I need [The Da Vinci Code](book_name).
-    - Do you carry [Harry Potter and the Philosopher’s Stone](book_name)?
-    - Can you help me find [The Road](book_name)?
-    - Is [Brave New World](book_name) in your catalog?
-    - Do you have [Fahrenheit 451](book_name)?
-    - I’m searching for [The Shining](book_name).
-    - Can you check if [Animal Farm](book_name) is available?
-    - I need to find [The Hunger Games](book_name).
-    - Do you have [Twilight](book_name)?
-    - Is [Gone Girl](book_name) on the shelves?
-    - Can I get [The Alchemist](book_name)?
+    - Is [Les Misérables](book_name) in your library?
+    - Can you check if [The Four Winds](book_name) is available?
+    - Do you carry [Red, White & Royal Blue](book_name)?
+    - I want to find [Heart of Darkness](book_name).
+    - Do you have [Malibu Rising](book_name)?
+    - Can you help me locate [The Glass Castle](book_name)?
+    - Is [On the Road](book_name) available?
+    - Is [The Nightingale](book_name) available here?
     - Do you have [The Kite Runner](book_name)?
-    - I want to borrow [The Catcher in the Rye](book_name).
-    - Do you stock [The Book Thief](book_name)?
-    - Is [Dune](book_name) available for checkout?
-    - Can I borrow [The Fault in Our Stars](book_name)?
-    - Do you have [A Song of Ice and Fire](book_name)?
-    - I’d like to read [The Time Traveler’s Wife](book_name).
-    - Can you help me find [The Maze Runner](book_name)?
-    - Is [Percy Jackson and the Olympians](book_name) in the library?
-    - Do you have [Eragon](book_name)?
     - Can I find [The Girl with the Dragon Tattoo](book_name)?
-    - Do you carry [Ender’s Game](book_name)?
+    - Can I check out [The Stranger](book_name)?
+    - Can I borrow [The Color Purple](book_name)?
+    - Do you have [A Tale of Two Cities](book_name)?
+    - Do you have [Love & Luck](book_name)?
+    - Is [An Abundance of Katherines](book_name) available?
+    - Do you have a book titled [Moby Dick](book_name)?
+    - I’d like to read [Before We Were Strangers](book_name).
+    - Do you have [The Wife Between Us](book_name)?
+    - I need to find [The Hunger Games](book_name).
+    - Is [The Bell Jar](book_name) available?
+    - Do you stock [They Both Die at the End](book_name)?
+    - Do you have [Of Mice and Men](book_name)?
+    - Do you have [The Vanishing Half](book_name)?
+    - Is [The Road Less Traveled](book_name) available?
+    - I need a copy of [The Catcher in the Rye](book_name).
     - Is [The Secret Garden](book_name) available?
-    - Can I get [The Lightning Thief](book_name)?
-    - Do you have [The Golden Compass](book_name)?
+    - Is [The Woman in the Window](book_name) available?
+    - Is [The Light Between Oceans](book_name) in stock?
+    - Can you check for [The Light We Lost](book_name)?
+    - I’m searching for [The Summer I Turned Pretty](book_name).
+    - Do you have [Jurassic Park](book_name)?
+    - Can I borrow [The Midnight Library](book_name)?
+    - Do you stock [Just One Day](book_name)?
+    - Is [Verity](book_name) in your catalog?
+    - Do you have [Jane Eyre](book_name)?
+    - Is [The Catcher in the Rye](book_name) available?
+    - Do you stock [It Ends with Us](book_name)?
+    - Do you have [The Paris Library](book_name)?
+    - Do you stock [The Upside of Unrequited](book_name)?
+    - I want to borrow [The Catcher in the Rye](book_name).
+    - I’m looking for [The Great Gatsby](book_name).
+    - I’m looking for [Beloved](book_name).
+    - Can I find [Ugly Love](book_name) in your library?
+    - Is [The Unhoneymooners](book_name) on your shelves?
+    - Can I borrow [What If It’s Us](book_name)?
+    - Can you help me find [The Maze Runner](book_name)?
+    - I’m searching for [The Stranger](book_name).
+    - I’m searching for [The Shining](book_name).
+    - Do you carry [Big Little Lies](book_name)?
+    - Do you have a copy of [To Kill a Mockingbird](book_name)?
+    - Do you have [Everything, Everything](book_name)?
+    - Can I borrow [Beach Read](book_name)?
+    - Is [The Beginning of Everything](book_name) in stock?
+    - Is [Brave New World](book_name) in your catalog?
+    - I need to find [The Statistical Probability of Love at First Sight](book_name).
+    - Do you have [1984](book_name)?
+    - Can I borrow [War and Peace](book_name)?
+    - Is [Dune](book_name) available for checkout?
+    - Do you have [The Bromance Book Club](book_name)?
+    - Is [Middlemarch](book_name) in your catalog?
+    - Can I find [Pride and Prejudice](book_name) in your library?
+    - Is [The Scarlet Letter](book_name) available?
+    - Is [People We Meet on Vacation](book_name) available?
+    - Do you carry [Harry Potter and the Philosopher’s Stone](book_name)?
+    - Do you have [A Song of Ice and Fire](book_name)?
+    - Is [The Way I Used to Be](book_name) available here?
+    - Do you have [Eleanor & Park](book_name)?
+    - Is [The Invisible Life of Addie LaRue](book_name) in stock?
+    - Do you carry [A Thousand Splendid Suns](book_name)?
+    - Do you have [Invisible Man](book_name)?
+    - Can you find [The Dating Playbook](book_name)?
+    - Is [Percy Jackson and the Olympians](book_name) in the library?
+    - Do you have [The Lovely Bones](book_name)?
+    - Can you check if [Animal Farm](book_name) is available?
+    - Can I borrow [The Fault in Our Stars](book_name)?
+    - I’d like to read [The Time Traveler’s Wife](book_name).
+    - Can I get [Great Expectations](book_name)?
+    - Can I borrow [The Love Hypothesis](book_name)?
+    - I need to find [Simon vs. the Homo Sapiens Agenda](book_name).
+    - Can you locate [If I Stay](book_name)?
+    - Is [The Hobbit](book_name) in stock?
+    - Do you have [The Sun Also Rises](book_name)?
+    - Can I borrow [Turtles All the Way Down](book_name)?
+    - Is [Gone Girl](book_name) on the shelves?
+    - I’m looking for [The Geography of You and Me](book_name).
+    - Can I check out [The Couple Next Door](book_name)?
     - Is [The Name of the Wind](book_name) on the shelves?
+    - Do you stock [The Book of Lost Friends](book_name)?
+    - Is [The Goldfinch](book_name) in your catalog?
+    - I need [The Da Vinci Code](book_name).
+    - I’d like to borrow [The Canterbury Tales](book_name).
+    - Do you stock [Paper Towns](book_name)?
+    - Do you have [Eragon](book_name)?
+    - Do you have [Twilight](book_name)?
+    - I’m looking for [The Martian](book_name).
     - Can you check for [The House of the Spirits](book_name)?
+    - Do you have [Every Summer After](book_name)?
+    - Is [Anna Karenina](book_name) available?
+    - Can I get [The Lightning Thief](book_name)?
+    - Do you have [The Infinite Moment of Us](book_name)?
+    - I’m searching for [The Seven Husbands of Evelyn Hugo](book_name).
+    - Do you have [Fahrenheit 451](book_name)?
     - Do you carry [The Grapes of Wrath](book_name)?
+    - Do you have [The Outsiders](book_name)?
+    - Can you help me find [The Road](book_name)?
+    - Can you check if [The Iliad](book_name) is on the shelves?
+    - Is [The Scarlet Letter](book_name) in your catalog?
+    - Can I borrow [The Summer of Broken Things](book_name)?
+    - Do you have [The Fault in Our Stars](book_name)?
+    - Do you stock [Slaughterhouse-Five](book_name)?
+    - Is [The Perks of Being a Wallflower](book_name) in stock?
+    - Can I find [Little Women](book_name) here?
+    - Do you have [The Golden Compass](book_name)?
+    - Do you carry [One Hundred Years of Solitude](book_name)?
+    - I’m searching for [The Sun Is Also a Star](book_name).
+    - I’m looking for [The Silent Patient](book_name).
+    - Can you find [Anxious People](book_name)?
+    - Can I get [Catch-22](book_name)?
+    - Do you have a copy of [The Water Dancer](book_name)?
+    - Can you find [Crime and Punishment](book_name)?
+    - Do you stock [The Book Thief](book_name)?
+    - I’m searching for [All the Bright Places](book_name).
+    - Do you carry [Lolita](book_name)?
+    - Is [To All the Boys I’ve Loved Before](book_name) available?
+    - Can you help me find [The Brothers Karamazov](book_name)?
+    - Do you carry [The Last House on Needless Street](book_name)?
+    - I’m searching for [The Odyssey](book_name).
+    - I’m looking for [Wuthering Heights](book_name).
+    - Do you stock [The Bell Jar](book_name)?
+    - Can you help me locate [Life of Pi](book_name)?
+    - Is [Love & Gelato](book_name) in your library?
+    - Can you check for [The Sky Is Everywhere](book_name)?
+    - Is [Behind Closed Doors](book_name) in stock?
+    - Can you check for [We Were Liars](book_name)?
+    - Can you locate [Looking for Alaska](book_name)?
+    - Can I borrow [Of Mice and Men](book_name)?
+    - Is [Where She Went](book_name) available?
+    - I’m looking for [Let It Snow](book_name).
+    - Is [Things Fall Apart](book_name) available?
+    - Do you stock [Les Misérables](book_name)?
+    - I’m looking for [Where the Crawdads Sing](book_name).
+    - I need a copy of [The Mystery of Mrs. Christie](book_name).
+    - Do you have [The Problem with Forever](book_name)?
+    - Can you locate [The Family Upstairs](book_name)?
+    - Can I borrow [Their Eyes Were Watching God](book_name)?
+    - Do you stock [The Alice Network](book_name)?
+    - Do you carry [Ender’s Game](book_name)?
+    - Can I find [The Giving Tree](book_name) here?
+    - Can you check for [Mexican Gothic](book_name)?
+    - Can you find [This Is What Happy Looks Like](book_name)?
+    - Can I find [The Divine Comedy](book_name)?
+    - Can I get [The Alchemist](book_name)?
+    - Is [Such a Fun Age](book_name) in your collection?
+    - Is [The Henna Artist](book_name) available for checkout?
 
 - intent: inquire_membership
   examples: |
-    - How do I become a member?
-    - What are the membership benefits?
-    - Can you tell me about membership?
-    - Do I need a membership card?
-    - How much does it cost to join the library?
-    - Is there a fee for membership?
-    - Are there any membership plans?
-    - What do I get with a membership?
-    - Can I join the library online?
-    - How do I register for a membership?
-    - Are there membership discounts for students?
-    - Is there a family membership plan?
-    - What is the process to sign up?
-    - Can I cancel my membership?
-    - Are there late fees for members?
-    - Do members get access to e-books?
-    - How long does membership last?
-    - Can I renew my membership online?
-    - What are the requirements to join?
-    - Is there a trial membership available?
-    - Can I get a free membership?
-    - Is membership mandatory to borrow books?
-    - Do members have special privileges?
     - Are there different levels of membership?
-    - Do I need an ID to register?
+    - Can I extend my membership period?
+    - Is a library membership refundable?
+    - Can I use one membership for multiple family members?
+    - Is there a family membership plan?
+    - Are there any rewards for long-term members?
+    - Can I use my library membership at university libraries?
+    - Can I share my membership with someone else?
+    - Are there exclusive areas for members in the library?
+    - Can visitors apply for a temporary membership?
+    - What’s the process for upgrading a membership plan?
+    - Are there any virtual events for members?
+    - Can I update my membership details online?
+    - Is there a trial membership available?
+    - What is included in the library membership?
+    - Is there an app for library members?
+    - Are there any hidden fees for members?
+    - Are there late fees for members?
+    - Do members have special privileges?
+    - Are there monthly newsletters for members?
+    - Can I borrow audiovisual materials as a member?
+    - Do I need a parent or guardian to sign up for membership?
+    - How do I verify my membership status?
+    - What happens if I don’t use my membership?
+    - Are there mentorship opportunities for members?
+    - Do you provide family-friendly membership plans?
+    - Are there rewards for referring new members?
+    - Are there discounts for students under 18?
+    - Can I switch between membership plans mid-year?
+    - Can I transfer my membership to another library branch?
+    - Do members get early access to new books?
+    - Are there membership options for students abroad?
+    - Can I cancel my membership anytime?
+    - How much does it cost to join the library?
+    - Are there annual member appreciation events?
+    - Can I request specific books as a member?
+    - Can I gift a membership to someone?
+    - Are there any membership perks during holidays?
+    - Are there time limits for borrowing books as a member?
+    - What are the membership benefits?
+    - Are there any online membership-only forums?
+    - How do I become a member?
+    - Is there a membership that includes access to digital archives?
+    - Can members get discounts on books purchased from the library?
+    - Is there a membership option for book clubs?
     - How do I replace a lost membership card?
-    - Can I upgrade my membership?
-    - Are there any penalties for non-members?
-    - Can I access the library as a guest?
-    - What happens if I lose my membership card?
-    - Is membership transferable?
-    - Can children get memberships?
     - Is there a membership for senior citizens?
+    - What happens if I lose my membership card?
+    - Are there discounts for groups or organizations?
+    - Can I apply for membership online and pick up my card later?
+    - Can you tell me about membership?
+    - Do I need a permanent address to apply for membership?
+    - Are there guest passes for members’ friends?
+    - Is there a grace period for expired memberships?
+    - Are there penalties for losing library materials as a member?
+    - Do I need an ID to register?
+    - Can I join the library online?
+    - What are the requirements to join?
+    - How do I get a duplicate membership card?
     - Do you offer corporate memberships?
-    - What happens if I don’t renew my membership?
+    - Is membership transferable?
+    - Are there networking opportunities for members?
+    - Do I need a membership card?
+    - Do you partner with schools for student memberships?
+    - Do I need to pay extra for workshops as a member?
+    - Is there a dedicated helpdesk for members?
+    - Is there a membership for retired professionals?
+    - Do members get access to e-books?
+    - Is there a fee for membership?
+    - What are the benefits of joining the library?
+    - Are there specific benefits for premium members?
+    - Are there any add-on services for members?
+    - Can members participate in special reading programs?
+    - What is the process to sign up?
+    - Can I get a replacement card online?
+    - What are the payment methods for membership fees?
+    - Can members reserve study rooms?
+    - Do you offer a digital membership?
+    - What’s the maximum number of books members can borrow?
     - How long does it take to process membership?
+    - Are there age restrictions for membership?
+    - Can I upgrade my membership?
+    - Can I view my borrowing history with a membership?
+    - Is there a loyalty program for members?
+    - How do I report a lost or stolen membership card?
+    - Do you provide membership cards for children?
+    - Are there book recommendations for members?
+    - Can members host events at the library?
+    - Is the library membership valid internationally?
+    - Is there a membership fee waiver for low-income families?
+    - Is the membership auto-renewable?
+    - Are there any free memberships for public school students?
+    - Can I pause my membership temporarily?
+    - Are there reading groups for members?
+    - Are there memberships for educators?
+    - Do you offer trial memberships for new users?
+    - Are there benefits for lifetime members?
+    - Are there any penalties for non-members?
+    - Can members suggest new books for the library?
+    - Are there any exclusive discounts for members?
+    - Are there workshops exclusively for members?
+    - Do members get priority access to events?
+    - Can I access premium resources with a regular membership?
+    - What happens if I don’t renew my membership?
+    - Is membership mandatory to borrow books?
+    - Do I need to pay for lost or damaged membership cards?
+    - Can I renew my membership online?
+    - What identification is required to join?
+    - Are there any membership plans?
+    - Can I join the library without a permanent address?
+    - How do I register for a membership?
+    - Are there author meet-and-greets for members?
+    - Are there different fees for local and non-local members?
+    - How do I check my membership expiration date?
+    - What do I get with a membership?
+    - Can I get a free membership?
+    - Do you provide guest passes for temporary visitors?
+    - Can I access the library as a guest?
+    - Is there a limit on how many books members can borrow?
+    - Can I sign up for membership in person?
+    - Do you provide financial assistance for membership fees?
+    - Are there private study spaces for members?
+    - Can children get memberships?
+    - Do you send reminders for membership renewal?
+    - Are there any educational programs for members?
+    - Can I apply for multiple memberships for different libraries?
+    - Are there children’s story hours for members?
+    - Can I pause my membership for vacations?
+    - Do members get discounts on library merchandise?
+    - Can I cancel my membership?
+    - How often can I borrow books as a member?
+    - How long does membership last?
+    - Can my whole family join under one membership?
+    - Are there different fees for non-residents?
+    - Is there a forum for members to connect with each other?
+    - Can I use my membership in other libraries?
+    - Do I get a discount on library events as a member?
+    - Is there an annual fee for library membership?
+    - Are there membership discounts for students?
+    - Do you have corporate sponsorship plans?
+    - Is there a way to get notifications for membership benefits?
+    - Do you offer refund policies for unused memberships?
+    - Can I track my membership activity online?
+    - Are there perks for being a member?
+    - How do I find out about new membership perks?
+    - What happens if my membership expires while I’m abroad?
+    - Can I get a digital membership card?
+    - Are there any workshops to help members use library resources?
+    - Do I need to renew my membership every year?
+    - Can a single membership cover multiple branches?
+    - Are there any volunteering opportunities for members?
+    - Are there penalties for overdue membership renewals?
 Notes:
 The dataset is balanced with approximately 100 examples for each intent.
 Examples are varied in structure to cover different phrasings and scenarios.
