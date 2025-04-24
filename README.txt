@@ -24,3 +24,47 @@ public class PluginInitializer implements ApplicationContextInitializer<Configur
     }
 }
 
+@Test
+void testPluginLoadingFromExternalJar() throws Exception {
+    // 1. Create a temporary directory and source file for plugin
+    Path tempDir = Files.createTempDirectory("plugin-test");
+    Path sourceFile = tempDir.resolve("my/special/Implementation.java");
+    Files.createDirectories(sourceFile.getParent());
+
+    String code = """
+        package my.special;
+
+        import com.example.core.Abstraction;
+
+        public class Implementation implements Abstraction {
+            public String greet() { return "Hi from test plugin"; }
+        }
+        """;
+
+    Files.writeString(sourceFile, code);
+
+    // 2. Compile the plugin class
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    assertNotNull(compiler, "JDK required for compiling test plugin");
+    int result = compiler.run(null, null, null,
+            "-d", tempDir.toString(),
+            sourceFile.toString());
+    assertEquals(0, result, "Compilation failed");
+
+    // 3. Package the compiled class into a JAR
+    Path jarPath = tempDir.resolve("plugin.jar");
+    try (JarOutputStream jar = new JarOutputStream(Files.newOutputStream(jarPath))) {
+        Path classFile = tempDir.resolve("my/special/Implementation.class");
+        jar.putNextEntry(new ZipEntry("my/special/Implementation.class"));
+        Files.copy(classFile, jar);
+        jar.closeEntry();
+    }
+
+    // 4. Load and verify the plugin using your real loader
+    URLClassLoader cl = new URLClassLoader(new URL[]{jarPath.toUri().toURL()}, getClass().getClassLoader());
+    Class<?> clazz = Class.forName("my.special.Implementation", true, cl);
+    Object instance = clazz.getDeclaredConstructor().newInstance();
+
+    assertTrue(instance instanceof Abstraction);
+    assertEquals("Hi from test plugin", ((Abstraction) instance).greet());
+}
