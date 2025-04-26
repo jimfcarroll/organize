@@ -1,3 +1,59 @@
+static Path pluginDir;
+
+@BeforeAll
+static void setupPluginJar() throws Exception {
+    // 1. Create a fixed directory under target/
+    pluginDir = Paths.get("target", "test-plugins", "test-plugin");
+    Files.createDirectories(pluginDir); // Safe even if it already exists
+
+    // 2. (Optional) Clean up any previous contents (fresh run)
+    if (Files.exists(pluginDir)) {
+        try (Stream<Path> walk = Files.walk(pluginDir)) {
+            walk.sorted(Comparator.reverseOrder())
+                .map(Path::toFile)
+                .forEach(File::delete);
+        }
+        Files.createDirectories(pluginDir);
+    }
+
+    // 3. Create the Java source file
+    Path sourceFile = pluginDir.resolve("my/special/Implementation.java");
+    Files.createDirectories(sourceFile.getParent());
+
+    String code = """
+        package my.special;
+
+        import com.example.core.Abstraction;
+
+        public class Implementation implements Abstraction {
+            public String greet() { return "Hello from test plugin!"; }
+        }
+    """;
+    Files.writeString(sourceFile, code);
+
+    // 4. Compile it
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    assertNotNull(compiler, "Compiler not available — use a full JDK, not JRE");
+    int result = compiler.run(null, null, null,
+            "-classpath", System.getProperty("java.class.path"),
+            "-d", pluginDir.toString(),
+            sourceFile.toString());
+    assertEquals(0, result, "Compilation failed");
+
+    // 5. Create plugin.jar in fixed location
+    Path jarPath = pluginDir.resolve("plugin.jar");
+    try (JarOutputStream jarOut = new JarOutputStream(Files.newOutputStream(jarPath))) {
+        Path classFile = pluginDir.resolve("my/special/Implementation.class");
+        jarOut.putNextEntry(new ZipEntry("my/special/Implementation.class"));
+        Files.copy(classFile, jarOut);
+        jarOut.closeEntry();
+    }
+
+    // 6. Set up for the test initializer
+    TestPluginInitializer.testPluginJarPath = jarPath.toAbsolutePath().toString();
+}
+
+
 public class PluginLoader {
 
     public static void injectJarIntoClassLoader(String jarPath) throws Exception {
