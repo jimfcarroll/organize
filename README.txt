@@ -1,27 +1,45 @@
-public class PluginInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
-    @Override
-    public void initialize(ConfigurableApplicationContext ctx) {
-        ConfigurableEnvironment env = ctx.getEnvironment();
+public class PluginLoader {
 
-        String className = env.getProperty("abstraction.implementation");
-        String jarPath = env.getProperty("abstraction.jar-path");
+    public static void injectJarIntoClassLoader(String jarPath) throws Exception {
+        File file = new File(jarPath);
+        URL jarUrl = file.toURI().toURL();
 
-        if (className == null || jarPath == null) {
-            throw new IllegalStateException("Plugin class name and jar path must be set in configuration.");
-        }
+        // Get the current classloader (should be LaunchedURLClassLoader if running spring-boot java -jar)
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
-        try {
-            URL jarUrl = new File(jarPath).toURI().toURL();
-            URLClassLoader pluginLoader = new URLClassLoader(new URL[]{jarUrl}, getClass().getClassLoader());
-
-            Class<?> pluginClass = Class.forName(className, true, pluginLoader);
-            Object pluginInstance = pluginClass.getDeclaredConstructor().newInstance();
-
-            ((GenericApplicationContext) ctx).registerBean((Class<Object>) pluginClass, () -> pluginInstance);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load plugin class", e);
+        if (classLoader instanceof URLClassLoader) {
+            // For older Java versions (Java 8), URLClassLoader is used
+            Method addURLMethod = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
+            addURLMethod.setAccessible(true);
+            addURLMethod.invoke(classLoader, jarUrl);
+        } else {
+            // Newer Spring Boot (Java 9+) -> more complicated: need to hack LaunchedURLClassLoader
+            try {
+                Method method = classLoader.getClass().getDeclaredMethod("addURL", URL.class);
+                method.setAccessible(true);
+                method.invoke(classLoader, jarUrl);
+            } catch (NoSuchMethodException nsme) {
+                throw new IllegalStateException("Cannot inject URL into ClassLoader: " + classLoader.getClass(), nsme);
+            }
         }
     }
+
+@Override
+public void initialize(ConfigurableApplicationContext ctx) {
+    Environment env = ctx.getEnvironment();
+    String jarPath = env.getProperty("abstraction.jar-path");
+
+    if (jarPath == null) {
+        throw new IllegalStateException("Plugin jar-path must be set in configuration.");
+    }
+
+    try {
+        PluginLoader.injectJarIntoClassLoader(jarPath);
+    } catch (Exception e) {
+        throw new RuntimeException("Failed to load plugin jar", e);
+    }
+}
+
 }
 
 @Test
